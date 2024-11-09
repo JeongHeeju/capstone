@@ -20,7 +20,7 @@ class MyApp extends StatelessWidget {
         'start' : (context) => StartScreen(),
         'login' : (context) => LoginScreen(),
         'signup' : (context) => SignupScreen(),
-        'success' : (context) => SuccessScreen(),
+        'success' : (context) => SuccessScreen(),gi
       },
     );
   }
