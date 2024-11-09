@@ -17,10 +17,10 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       initialRoute: '/start',
       routes: {
-        'start' : (context) => StartScreen(),
-        'login' : (context) => LoginScreen(),
-        'signup' : (context) => SignupScreen(),
-        'success' : (context) => SuccessScreen(),gi
+        '/start' : (context) => StartScreen(),
+        '/login' : (context) => LoginScreen(),
+        '/signup' : (context) => SignupScreen(),
+        '/success' : (context) => SuccessScreen(),
       },
     );
   }
