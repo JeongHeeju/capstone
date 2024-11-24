@@ -3,6 +3,9 @@ import 'screen/start_screen.dart';
 import 'screen/login_screen.dart';
 import 'screen/signup_screen.dart';
 import 'screen/success_screen.dart';
+import 'screen/survey_screen.dart';
+import 'screen/health_screen.dart';
+import 'screen/food_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,16 +18,113 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      initialRoute: '/start',
-      routes: {
-        'start' : (context) => StartScreen(),
-        'login' : (context) => LoginScreen(),
-        'signup' : (context) => SignupScreen(),
-        'success' : (context) => SuccessScreen(),gi
+      theme: ThemeData(
+        scaffoldBackgroundColor: Color(0xFFFBFBFB),// 전역 배경색 설정
+        textTheme: TextTheme(
+        bodyMedium: TextStyle(color: Color(0xFF323232)),// 전역 글자색 설정
+            ),
+        textSelectionTheme: TextSelectionThemeData(
+          cursorColor: Color(0xFF323232), // 커서 색상
+          selectionColor: Color(0xFFFF5833), // 텍스트 선택 색상
+          selectionHandleColor: Color(0xFFFF5833), // 선택 핸들 색상
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+            labelStyle: TextStyle(color: Color(0xFF323232)),//라벨텍스트 색상
+            focusedBorder: OutlineInputBorder(
+            borderSide: BorderSide(
+            color: Color(0xFFFF5833),//포커스된 이후 텍스트색상
+            ),
+          ),
+        ),
+      ),
+    initialRoute: '/start',
+    routes: {
+        '/start' : (context) => StartScreen(),
+        '/login' : (context) => LoginScreen(),
+        '/signup' : (context) => SignupScreen(),
+        '/success' : (context) => SuccessScreen(),
+        '/survey' : (context) => SurveyScreen(),
+        '/health' : (context) => HealthScreen(),
+        '/food' : (context) => FoodScreen(),
+        '/allergy' : (context) => FoodScreen(),
       },
     );
   }
 }
+
+class CustomScaffold extends StatelessWidget {
+  final Widget child;
+
+  CustomScaffold({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SingleChildScrollView(
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(15.0),
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class HoverAndClickButton extends StatefulWidget {
+  @override
+  _HoverAndClickButtonState createState() => _HoverAndClickButtonState();
+}
+
+class _HoverAndClickButtonState extends State<HoverAndClickButton> {
+  bool isHovered = false; // Hover 상태
+  bool isPressed = false; // 클릭 상태
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Hover & Click Button Example')),
+      body: Center(
+        child: MouseRegion(
+          onEnter: (_) => setState(() => isHovered = true), // Hover 시작
+          onExit: (_) => setState(() => isHovered = false), // Hover 종료
+          child: GestureDetector(
+            onTapDown: (_) => setState(() => isPressed = true), // 클릭 시작
+            onTapUp: (_) => setState(() => isPressed = false), // 클릭 종료
+            onTapCancel: () => setState(() => isPressed = false), // 클릭 취소
+            child: Material(
+              color: Colors.transparent, // 클릭 효과 제거를 위해 배경 투명화
+              child: AnimatedContainer(
+                duration: Duration(milliseconds: 200), // 애니메이션 지속 시간
+                width: 150,
+                height: 50,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: isPressed
+                      ? Color(0xFFFF5833) // 클릭 상태 색상
+                      : isHovered
+                      ? Color(0xFFFF5833) // Hover 상태 색상
+                      : Color(0xFFFBFBFB), // 기본 색상
+                  borderRadius: BorderRadius.circular(20), // 둥근 모서리
+                ),
+                child: Text(
+                  'Hover & Click',
+                  style: TextStyle(
+                    color: isPressed || isHovered ? Colors.white : Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
