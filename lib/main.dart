@@ -6,6 +6,7 @@ import 'screen/success_screen.dart';
 import 'screen/survey_screen.dart';
 import 'screen/health_screen.dart';
 import 'screen/food_screen.dart';
+import 'package:google_fonts/google_fonts.dart'; // google_fonts 패키지 import
 
 void main() {
   runApp(const MyApp());
@@ -14,109 +15,121 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       theme: ThemeData(
-        scaffoldBackgroundColor: Color(0xFFFBFBFB),// 전역 배경색 설정
+        scaffoldBackgroundColor: Color(0xFFFBFBFB), // 전역 배경색 설정
         textTheme: TextTheme(
-        bodyMedium: TextStyle(color: Color(0xFF323232)),// 전역 글자색 설정
-            ),
+          bodyMedium: GoogleFonts.roboto( // Google Fonts를 사용해 Roboto 설정
+            color: Color(0xFF2F2F2F), // 변경된 색상
+          ),
+        ),
         textSelectionTheme: TextSelectionThemeData(
-          cursorColor: Color(0xFF323232), // 커서 색상
-          selectionColor: Color(0xFFFF5833), // 텍스트 선택 색상
+          cursorColor: Color(0xFF2F2F2F), // 커서 색상 변경
+          selectionColor: Color(0xFFE0E0E0), // 텍스트 선택 색상
           selectionHandleColor: Color(0xFFFF5833), // 선택 핸들 색상
         ),
         inputDecorationTheme: InputDecorationTheme(
-            labelStyle: TextStyle(color: Color(0xFF323232)),//라벨텍스트 색상
-            focusedBorder: OutlineInputBorder(
+          labelStyle: GoogleFonts.roboto( // 라벨 텍스트 폰트도 Roboto로 설정
+            color: Color(0xFF2F2F2F), // 변경된 색상
+          ),
+          focusedBorder: OutlineInputBorder(
             borderSide: BorderSide(
-            color: Color(0xFFFF5833),//포커스된 이후 텍스트색상
+              color: Color(0xFF2F2F2F), // 포커스된 이후 텍스트 색상
             ),
           ),
         ),
+        fontFamily: 'Roboto', // 전역 폰트 설정
+
+        // AppBar 스타일 추가
+        appBarTheme: AppBarTheme(
+          backgroundColor: Color(0xFFFBFBFB), // AppBar 배경색
+          foregroundColor: Color(0xFF2F2F2F), // 변경된 색상
+          elevation: 0, // 그림자 제거
+          titleTextStyle: GoogleFonts.roboto( // AppBar 타이틀 폰트 설정
+            color: Color(0xFF2F2F2F), // 변경된 색상
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+          iconTheme: IconThemeData(
+            color: Color(0xFF2F2F2F), // 변경된 색상
+          ),
+        ),
+
+        // ElevatedButton 스타일 추가
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Color(0xFFFF5833), // 배경색 설정
+            foregroundColor: Color(0xFFFBFBFB), // 텍스트 색상 설정
+            //splashFactory: NoSplash.splashFactory, // 클릭 시 효과 제거
+          ),
+        ),
+
+        // TextButton 스타일 추가
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            foregroundColor: Color(0xFFE0E0E0), // 기본 텍스트 색상
+            backgroundColor: Colors.transparent, // 기본 배경 색상
+          ),
+        ),
       ),
-    initialRoute: '/start',
-    routes: {
-        '/start' : (context) => StartScreen(),
-        '/login' : (context) => LoginScreen(),
-        '/signup' : (context) => SignupScreen(),
-        '/success' : (context) => SuccessScreen(),
-        '/survey' : (context) => SurveyScreen(),
-        '/health' : (context) => HealthScreen(),
-        '/food' : (context) => FoodScreen(),
-        '/allergy' : (context) => FoodScreen(),
+      initialRoute: '/start',
+      routes: {
+        '/start': (context) => StartScreen(selectedFoods: [],),
+        '/login': (context) => LoginScreen(selectedFoods: [],),
+        '/signup': (context) => SignupScreen(),
+        '/success': (context) => SuccessScreen(),
+        '/survey': (context) => SurveyScreen(selectedFoods: [],),
+        '/health': (context) => HealthScreen(),
+        '/food': (context) => FoodScreen(),
       },
     );
   }
 }
 
-class CustomScaffold extends StatelessWidget {
-  final Widget child;
 
-  CustomScaffold({required this.child});
+class HoverTextButton extends StatefulWidget {
+  final String text;
+  final VoidCallback onPressed;
+  final Color textColor; // 텍스트 색상을 외부에서 설정할 수 있도록 추가
+
+  HoverTextButton({
+    required this.text,
+    required this.onPressed,
+    this.textColor = const Color(0xFFFF5833), // 기본 텍스트 색상은 오렌지
+  });
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SingleChildScrollView(
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(15.0),
-            child: child,
-          ),
-        ),
-      ),
-    );
-  }
+  _HoverTextButtonState createState() => _HoverTextButtonState();
 }
 
-class HoverAndClickButton extends StatefulWidget {
-  @override
-  _HoverAndClickButtonState createState() => _HoverAndClickButtonState();
-}
-
-class _HoverAndClickButtonState extends State<HoverAndClickButton> {
+class _HoverTextButtonState extends State<HoverTextButton> {
   bool isHovered = false; // Hover 상태
   bool isPressed = false; // 클릭 상태
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Hover & Click Button Example')),
-      body: Center(
-        child: MouseRegion(
-          onEnter: (_) => setState(() => isHovered = true), // Hover 시작
-          onExit: (_) => setState(() => isHovered = false), // Hover 종료
-          child: GestureDetector(
-            onTapDown: (_) => setState(() => isPressed = true), // 클릭 시작
-            onTapUp: (_) => setState(() => isPressed = false), // 클릭 종료
-            onTapCancel: () => setState(() => isPressed = false), // 클릭 취소
-            child: Material(
-              color: Colors.transparent, // 클릭 효과 제거를 위해 배경 투명화
-              child: AnimatedContainer(
-                duration: Duration(milliseconds: 200), // 애니메이션 지속 시간
-                width: 150,
-                height: 50,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: isPressed
-                      ? Color(0xFFFF5833) // 클릭 상태 색상
-                      : isHovered
-                      ? Color(0xFFFF5833) // Hover 상태 색상
-                      : Color(0xFFFBFBFB), // 기본 색상
-                  borderRadius: BorderRadius.circular(20), // 둥근 모서리
-                ),
-                child: Text(
-                  'Hover & Click',
-                  style: TextStyle(
-                    color: isPressed || isHovered ? Colors.white : Colors.black,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+    return MouseRegion(
+      onEnter: (_) => setState(() => isHovered = true), // Hover 시작
+      onExit: (_) => setState(() => isHovered = false), // Hover 종료
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => isPressed = true), // 클릭 시작
+        onTapUp: (_) => setState(() => isPressed = false), // 클릭 종료
+        onTapCancel: () => setState(() => isPressed = false), // 클릭 취소
+        child: TextButton(
+          onPressed: widget.onPressed,
+          style: TextButton.styleFrom(
+            backgroundColor: isPressed
+                ? Color(0xFFCECECE) // 클릭 시 배경색 변경
+                : (isHovered ? Color(0xFFE0E0E0) : Colors.transparent), // Hover 시 배경색 변경
+            splashFactory: NoSplash.splashFactory, // 클릭 시 효과 제거
+            //highlightColor: Colors.transparent, // 클릭 시 효과 제거
+          ),
+          child: Text(
+            widget.text,
+            style: TextStyle(
+              color: widget.textColor, // 텍스트 색상은 변하지 않음
             ),
           ),
         ),

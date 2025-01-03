@@ -16,8 +16,11 @@ class _SuccessScreenState extends State<SuccessScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-                '회원 가입이\n완료되었습니다',
-                style: TextStyle(fontSize: 30)
+              '밥 친구가 된 걸\n환영해요!',
+              style: TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.bold, // 예: 얇은 글꼴 (300)
+              ),
             ),
             SizedBox(height: 20),
             ElevatedButton(onPressed: () {
@@ -25,11 +28,11 @@ class _SuccessScreenState extends State<SuccessScreen> {
             },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Color(0xFFFF5833),
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: 70, vertical: 20),
               ),
               child: Text(
                 '로그인',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold,
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold,
                   color: Color(0xFFFBFBFB),
                 ),
               ),
