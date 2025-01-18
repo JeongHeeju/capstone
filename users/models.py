@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, User
 
 class UserManager(BaseUserManager):
     def create_user(self, user_id, username, password=None):
@@ -29,4 +29,32 @@ class User(AbstractBaseUser):
 
     def __str__(self):
         return self.username
+      
+#설문조사 저장 내용
+class UserProfile(models.Model):
+    user_id = models.OneToOneField('users.User', on_delete=models.CASCADE)  # Django의 기본 User 모델과 연결
+    gender = models.CharField(max_length=10, choices=[('남성', '남성'), ('여성', '여성')])
+    birth_date = models.DateField()
+    height = models.FloatField()  # 신장
+    weight = models.FloatField()  # 몸무게
+    medical_conditions = models.TextField(blank=True)  # 진단받은 질환 (쉼표로 구분)
 
+    def __str__(self):
+        return self.user_id.username
+
+
+class FoodPreference(models.Model):
+    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='food_preferences')
+    food_name = models.CharField(max_length=100)  # 음식 이름
+    is_liked = models.BooleanField()  # 선호 여부
+
+    def __str__(self):
+        return f"{self.user.user_id.username} - {self.food_name} - {'Liked' if self.is_liked else 'Disliked'}"
+
+
+class Allergy(models.Model):
+    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='allergies')
+    allergy_name = models.CharField(max_length=100)  # 알러지 항목 이름
+
+    def __str__(self):
+        return f"{self.user.user_id.username} - {self.allergy_name}"
