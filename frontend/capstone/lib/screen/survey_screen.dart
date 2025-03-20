@@ -21,7 +21,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
             ),
             SizedBox(height: 20),
             TextButton(onPressed: () {
-              //Navigator.pushNamed(context, '/signup');//다음으로 어디화면 갈지
+               Navigator.pushNamed(context, '/chat');
             }, child: Text('건너뛰기', style: TextStyle(color: Color(0xFFFF5833))),
             ),
             TextButton(onPressed: () {
