@@ -7,6 +7,7 @@ import 'screen/survey_screen.dart';
 import 'screen/health_screen.dart';
 import 'screen/food_screen.dart';
 import 'package:google_fonts/google_fonts.dart'; // google_fonts 패키지 import
+import 'package:flutter_localizations/flutter_localizations.dart'; // 로컬라이제이션 패키지
 
 void main() {
   runApp(const MyApp());
@@ -18,10 +19,21 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      locale: Locale('ko', 'KR'), // 한국어 로케일 설정
+      supportedLocales: [
+        Locale('en', 'US'), // 영어
+        Locale('ko', 'KR'), // 한국어
+      ],
+      localizationsDelegates: [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       theme: ThemeData(
         scaffoldBackgroundColor: Color(0xFFFBFBFB), // 전역 배경색 설정
         textTheme: TextTheme(
-          bodyMedium: GoogleFonts.roboto( // Google Fonts를 사용해 Roboto 설정
+          bodyMedium: GoogleFonts.roboto(
+            // Google Fonts를 사용해 Roboto 설정
             color: Color(0xFF2F2F2F), // 변경된 색상
           ),
         ),
@@ -31,7 +43,8 @@ class MyApp extends StatelessWidget {
           selectionHandleColor: Color(0xFFFF5833), // 선택 핸들 색상
         ),
         inputDecorationTheme: InputDecorationTheme(
-          labelStyle: GoogleFonts.roboto( // 라벨 텍스트 폰트도 Roboto로 설정
+          labelStyle: GoogleFonts.roboto(
+            // 라벨 텍스트 폰트도 Roboto로 설정
             color: Color(0xFF2F2F2F), // 변경된 색상
           ),
           focusedBorder: OutlineInputBorder(
@@ -47,7 +60,8 @@ class MyApp extends StatelessWidget {
           backgroundColor: Color(0xFFFBFBFB), // AppBar 배경색
           foregroundColor: Color(0xFF2F2F2F), // 변경된 색상
           elevation: 0, // 그림자 제거
-          titleTextStyle: GoogleFonts.roboto( // AppBar 타이틀 폰트 설정
+          titleTextStyle: GoogleFonts.roboto(
+            // AppBar 타이틀 폰트 설정
             color: Color(0xFF2F2F2F), // 변경된 색상
             fontWeight: FontWeight.bold,
             fontSize: 20,
@@ -76,18 +90,21 @@ class MyApp extends StatelessWidget {
       ),
       initialRoute: '/start',
       routes: {
-        '/start': (context) => StartScreen(selectedFoods: [],),
+        '/start': (context) => StartScreen(
+              selectedFoods: [],
+            ),
         '/login': (context) => LoginScreen(selectedFoods: [],),
         '/signup': (context) => SignupScreen(),
         '/success': (context) => SuccessScreen(),
-        '/survey': (context) => SurveyScreen(selectedFoods: [],),
+        '/survey': (context) => SurveyScreen(
+              selectedFoods: [],
+            ),
         '/health': (context) => HealthScreen(),
         '/food': (context) => FoodScreen(),
       },
     );
   }
 }
-
 
 class HoverTextButton extends StatefulWidget {
   final String text;
@@ -122,7 +139,9 @@ class _HoverTextButtonState extends State<HoverTextButton> {
           style: TextButton.styleFrom(
             backgroundColor: isPressed
                 ? Color(0xFFCECECE) // 클릭 시 배경색 변경
-                : (isHovered ? Color(0xFFE0E0E0) : Colors.transparent), // Hover 시 배경색 변경
+                : (isHovered
+                    ? Color(0xFFE0E0E0)
+                    : Colors.transparent), // Hover 시 배경색 변경
             splashFactory: NoSplash.splashFactory, // 클릭 시 효과 제거
             //highlightColor: Colors.transparent, // 클릭 시 효과 제거
           ),
@@ -137,7 +156,6 @@ class _HoverTextButtonState extends State<HoverTextButton> {
     );
   }
 }
-
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});

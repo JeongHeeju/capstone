@@ -128,10 +128,25 @@ class _FoodScreenState extends State<FoodScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+      /*appBar: AppBar(
         backgroundColor: Color(0xFFFBFBFB),
         title: Text('음식 선호도 체크', style: TextStyle(
             color: Color(0xFF2F2F2F)),
+        ),
+      ),*/
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(56.0),
+        child: AppBar(
+          backgroundColor: Color(0xFFFBFBFB),
+          /*backgroundColor: _scrollController.hasClients && _scrollController.offset > 3
+                ? Color(0xFFE0E0E0) // 스크롤 시 색상 변경
+                : Color(0xFFFBFBFB),*/ // 기본색
+          title: Text('음식 선호도 체크', style: TextStyle(color: Color(0xFF2F2F2F))),
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              color: Color(0xFFFBFBFB), // 배경색 설정
+            ),
+          ),
         ),
       ),
       body: Padding(

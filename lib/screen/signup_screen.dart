@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -9,10 +11,48 @@ class SignupScreen extends StatefulWidget {
 
 class _SignupScreenState extends State<SignupScreen> {
   // 텍스트 필드 컨트롤러
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _idController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _userIdController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _passwordConfirmController = TextEditingController();
+
+  Future<void> signupUser() async {
+    if (_passwordController.text != _passwordConfirmController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Passwords do not match')),
+      );
+      return;
+    }
+
+    final url = Uri.parse('http://127.0.0.1:8000/users/signup/');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'username': _usernameController.text,
+          'user_id': _userIdController.text,
+          'password': _passwordController.text,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('회원가입 성공! 로그인 화면으로 이동합니다.')),
+        );
+        Navigator.pushNamed(context, '/login');
+      } else {
+        final error = json.decode(response.body)['error'];
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('회원가입 실패: $error')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('회원가입 중 오류 발생: $e')),
+      );
+    }
+  }
 
   // 오류 메시지 변수
   String? _nameError;
@@ -35,28 +75,29 @@ class _SignupScreenState extends State<SignupScreen> {
   // 입력 검증 함수
   void _validateName() {
     setState(() {
-      _nameError = _nameController.text.length < 3 ? "3자리 이상 입력해주세요" : null;
+      _nameError = _usernameController.text.length < 3 ? "3자리 이상 입력해주세요" : null;
     });
   }
 
   void _validateId() {
     setState(() {
-      _idError = _idController.text.length < 6 ? "영문 6자리 이상 입력해주세요" : null;
+      _idError = _userIdController.text.length < 6 ? "영문 6자리 이상 입력해주세요" : null;
     });
   }
 
   void _validatePassword() {
     setState(() {
       _passwordError =
-      _passwordController.text.length < 6 ? "영문 6자리 이상 입력해주세요" : null;
+          _passwordController.text.length < 6 ? "영문 6자리 이상 입력해주세요" : null;
     });
   }
 
   void _validateConfirmPassword() {
     setState(() {
       _confirmPasswordError =
-      _confirmPasswordController.text != _passwordController.text
-          ? "비밀번호가 일치하지 않습니다" : null;
+          _passwordConfirmController.text != _passwordController.text
+              ? "비밀번호가 일치하지 않습니다"
+              : null;
     });
   }
 
@@ -343,7 +384,7 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+      /*appBar: AppBar(
         backgroundColor: _scrollController.hasClients && _scrollController.offset > 3
             ? Color(0xFFE0E0E0) // 스크롤 시 색상 변경
             : Color(0xFFFBFBFB), // 기본색
@@ -351,10 +392,26 @@ class _SignupScreenState extends State<SignupScreen> {
           '회원가입',
           style: TextStyle(color: Color(0xFF2F2F2F)),
         ),
+      ),*/
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(56.0),
+        child: AppBar(
+          backgroundColor: Color(0xFFFBFBFB),
+          /*backgroundColor: _scrollController.hasClients && _scrollController.offset > 3
+                ? Color(0xFFE0E0E0) // 스크롤 시 색상 변경
+                : Color(0xFFFBFBFB),*/ // 기본색
+          title: Text('회원가입', style: TextStyle(color: Color(0xFF2F2F2F))),
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              color: Color(0xFFFBFBFB), // 배경색 설정
+            ),
+          ),
+        ),
       ),
       body: Column(
         children: [
-          Expanded( // 화면을 차지하는 스크롤 가능한 부분
+          Expanded(
+            // 화면을 차지하는 스크롤 가능한 부분
             child: SingleChildScrollView(
               controller: _scrollController,
               child: Padding(
@@ -364,7 +421,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   children: [
                     // 사용자 이름 입력
                     TextField(
-                      controller: _nameController,
+                      controller: _usernameController,
                       decoration: InputDecoration(
                         labelText: '사용자 이름 입력',
                         hintText: '3자리 이상 입력해주세요',
@@ -391,7 +448,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     SizedBox(height: 50),
                     // 아이디 입력
                     TextField(
-                      controller: _idController,
+                      controller: _userIdController,
                       decoration: InputDecoration(
                         labelText: '아이디 입력',
                         hintText: '영문 6자리 이상 입력해주세요',
@@ -439,18 +496,24 @@ class _SignupScreenState extends State<SignupScreen> {
                           borderSide: BorderSide(color: Color(0xFFFF5833)),
                         ),
                         suffixIcon: _isPasswordFieldTapped
-                            ? IconButton(
-                          icon: Icon(
-                            _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                            color: Color(0xFF2F2F2F),
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _isPasswordVisible =
-                              !_isPasswordVisible; // 비밀번호 보이기/숨기기 토글
-                            });
-                          },
-                        )
+                            ? Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8.0), // 패딩 값 추가
+                                child: IconButton(
+                                  icon: Icon(
+                                    _isPasswordVisible
+                                        ? Icons.visibility
+                                        : Icons.visibility_off,
+                                    color: Color(0xFF2F2F2F),
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _isPasswordVisible =
+                                          !_isPasswordVisible; // 비밀번호 보이기/숨기기 토글
+                                    });
+                                  },
+                                ),
+                              )
                             : null,
                       ),
                       onTap: () {
@@ -465,7 +528,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     SizedBox(height: 50),
                     // 비밀번호 확인 입력
                     TextField(
-                      controller: _confirmPasswordController,
+                      controller: _passwordConfirmController,
                       obscureText: !_isConfirmPasswordVisible,
                       decoration: InputDecoration(
                         labelText: '비밀번호 확인',
@@ -486,24 +549,29 @@ class _SignupScreenState extends State<SignupScreen> {
                           borderSide: BorderSide(color: Color(0xFFFF5833)),
                         ),
                         suffixIcon: _isConfirmPasswordFieldTapped
-                            ? IconButton(
-                          icon: Icon(
-                            _isConfirmPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                            color: Color(0xFF2F2F2F),
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _isConfirmPasswordVisible =
-                              !_isConfirmPasswordVisible;
-                            });
-                          },
-                        )
+                            ? Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8.0), // 좌우 패딩만 적용
+                                child: IconButton(
+                                  icon: Icon(
+                                    _isConfirmPasswordVisible
+                                        ? Icons.visibility
+                                        : Icons.visibility_off,
+                                    color: Color(0xFF2F2F2F),
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _isConfirmPasswordVisible =
+                                          !_isConfirmPasswordVisible;
+                                    });
+                                  },
+                                ),
+                              )
                             : null,
                       ),
                       onTap: () {
                         setState(() {
-                          _isConfirmPasswordFieldTapped =
-                          true;
+                          _isConfirmPasswordFieldTapped = true;
                         });
                       },
                       onChanged: (text) {
@@ -520,20 +588,22 @@ class _SignupScreenState extends State<SignupScreen> {
           Padding(
             padding: const EdgeInsets.all(20),
             child: ElevatedButton(
-              onPressed: () {
+              /*onPressed: () {
                 // 모든 입력 검증 후 성공적으로 회원가입 로직 처리
                 if (_nameError == null && _idError == null &&
                     _passwordError == null && _confirmPasswordError == null) {
                   Navigator.pushNamed(context, '/success');
                 }
-              },
+              },*/
+              onPressed: signupUser, // 회원가입 API 호출 함수 연결
               style: ElevatedButton.styleFrom(
                 backgroundColor: Color(0xFFFF5833),
                 padding: EdgeInsets.symmetric(horizontal: 50, vertical: 16),
               ),
               child: Text(
                 '회원가입',
-                style: TextStyle(fontSize: 16,
+                style: TextStyle(
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFFFBFBFB)),
               ),
@@ -544,7 +614,6 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 }
-
 
 /*import 'package:flutter/material.dart';
 
