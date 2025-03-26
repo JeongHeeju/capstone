@@ -10,6 +10,7 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
+  // 텍스트 필드 컨트롤러
   final _usernameController = TextEditingController();
   final _userIdController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -53,42 +54,291 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
+  // 오류 메시지 변수
+  String? _nameError;
+  String? _idError;
+  String? _passwordError;
+  String? _confirmPasswordError;
+
+  // 비밀번호 보이기/숨기기 상태
+  bool _isPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
+
+  // 포커스 노드
+  /*FocusNode _passwordFocusNode = FocusNode();
+  FocusNode _confirmPasswordFocusNode = FocusNode();*/
+
+  // 비밀번호 입력 필드 클릭 여부
+  bool _isPasswordFieldTapped = false;
+  bool _isConfirmPasswordFieldTapped = false;
+
+  // 입력 검증 함수
+  void _validateName() {
+    setState(() {
+      _nameError = _usernameController.text.length < 3 ? "3자리 이상 입력해주세요" : null;
+    });
+  }
+
+  void _validateId() {
+    setState(() {
+      _idError = _userIdController.text.length < 6 ? "영문 6자리 이상 입력해주세요" : null;
+    });
+  }
+
+  void _validatePassword() {
+    setState(() {
+      _passwordError =
+          _passwordController.text.length < 6 ? "영문 6자리 이상 입력해주세요" : null;
+    });
+  }
+
+  void _validateConfirmPassword() {
+    setState(() {
+      _confirmPasswordError =
+          _passwordConfirmController.text != _passwordController.text
+              ? "비밀번호가 일치하지 않습니다"
+              : null;
+    });
+  }
+
+  @override
+  
+  ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(() {
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('회원가입'),
-      ),
-      body: Padding(
-        padding: EdgeInsets.all(15),
-        child: Column(
-          children: [
-            TextField(
-              controller: _usernameController, // 컨트롤러 연결
-              decoration: InputDecoration(labelText: '사용자 이름 입력'),
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(56.0),
+        child: AppBar(
+          backgroundColor: Color(0xFFFBFBFB),
+          title: Text('회원가입', style: TextStyle(color: Color(0xFF2F2F2F))),
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              color: Color(0xFFFBFBFB), // 배경색 설정
             ),
-            TextField(
-              controller: _userIdController, // 컨트롤러 연결
-              decoration: InputDecoration(labelText: '아이디 입력'),
-            ),
-            TextField(
-              controller: _passwordController, // 컨트롤러 연결
-              decoration: InputDecoration(labelText: '비밀번호 입력'),
-              obscureText: true, // 비밀번호 가림 처리
-            ),
-            TextField(
-              controller: _passwordConfirmController, // 컨트롤러 연결
-              decoration: InputDecoration(labelText: '비밀번호 확인'),
-              obscureText: true, // 비밀번호 가림 처리
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: signupUser, // 회원가입 API 호출 함수 연결
-              child: Text('회원가입'),
-            ),
-          ],
+          ),
         ),
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            // 화면을 차지하는 스크롤 가능한 부분
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 사용자 이름 입력
+                    TextField(
+                      controller: _usernameController,
+                      decoration: InputDecoration(
+                        labelText: '사용자 이름 입력',
+                        hintText: '3자리 이상 입력해주세요',
+                        hintStyle: TextStyle(color: Color(0xFFE0E0E0)),
+                        errorText: _nameError,
+                        errorStyle: TextStyle(color: Color(0xFFFF5833)),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFF2F2F2F)),
+                        ),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFF2F2F2F)),
+                        ),
+                        errorBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFFFF5833)),
+                        ),
+                        focusedErrorBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFFFF5833)),
+                        ),
+                      ),
+                      onChanged: (text) {
+                        _validateName(); // 실시간 검증
+                      },
+                    ),
+                    SizedBox(height: 50),
+                    // 아이디 입력
+                    TextField(
+                      controller: _userIdController,
+                      decoration: InputDecoration(
+                        labelText: '아이디 입력',
+                        hintText: '영문 6자리 이상 입력해주세요',
+                        hintStyle: TextStyle(color: Color(0xFFE0E0E0)),
+                        errorText: _idError,
+                        errorStyle: TextStyle(color: Color(0xFFFF5833)),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFF2F2F2F)),
+                        ),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFF2F2F2F)),
+                        ),
+                        errorBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFFFF5833)),
+                        ),
+                        focusedErrorBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFFFF5833)),
+                        ),
+                      ),
+                      onChanged: (text) {
+                        _validateId(); // 실시간 검증
+                      },
+                    ),
+                    SizedBox(height: 50),
+                    // 비밀번호 입력
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: !_isPasswordVisible,
+                      decoration: InputDecoration(
+                        labelText: '비밀번호 입력',
+                        hintText: '영문 6자리 이상 입력해주세요',
+                        hintStyle: TextStyle(color: Color(0xFFE0E0E0)),
+                        errorText: _passwordError,
+                        errorStyle: TextStyle(color: Color(0xFFFF5833)),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFF2F2F2F)),
+                        ),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFF2F2F2F)),
+                        ),
+                        errorBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFFFF5833)),
+                        ),
+                        focusedErrorBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFFFF5833)),
+                        ),
+                        suffixIcon: _isPasswordFieldTapped
+                            ? Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8.0), // 패딩 값 추가
+                                child: IconButton(
+                                  icon: Icon(
+                                    _isPasswordVisible
+                                        ? Icons.visibility
+                                        : Icons.visibility_off,
+                                    color: Color(0xFF2F2F2F),
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _isPasswordVisible =
+                                          !_isPasswordVisible; // 비밀번호 보이기/숨기기 토글
+                                    });
+                                  },
+                                ),
+                              )
+                            : null,
+                      ),
+                      onTap: () {
+                        setState(() {
+                          _isPasswordFieldTapped = true;
+                        });
+                      },
+                      onChanged: (text) {
+                        _validatePassword(); // 실시간 검증
+                      },
+                    ),
+                    SizedBox(height: 50),
+                    // 비밀번호 확인 입력
+                    TextField(
+                      controller: _passwordConfirmController,
+                      obscureText: !_isConfirmPasswordVisible,
+                      decoration: InputDecoration(
+                        labelText: '비밀번호 확인',
+                        hintText: '영문 6자리 이상 입력해주세요',
+                        hintStyle: TextStyle(color: Color(0xFFE0E0E0)),
+                        errorText: _confirmPasswordError,
+                        errorStyle: TextStyle(color: Color(0xFFFF5833)),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFF2F2F2F)),
+                        ),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFF2F2F2F)),
+                        ),
+                        errorBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFFFF5833)),
+                        ),
+                        focusedErrorBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFFFF5833)),
+                        ),
+                        suffixIcon: _isConfirmPasswordFieldTapped
+                            ? Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8.0), // 좌우 패딩만 적용
+                                child: IconButton(
+                                  icon: Icon(
+                                    _isConfirmPasswordVisible
+                                        ? Icons.visibility
+                                        : Icons.visibility_off,
+                                    color: Color(0xFF2F2F2F),
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _isConfirmPasswordVisible =
+                                          !_isConfirmPasswordVisible;
+                                    });
+                                  },
+                                ),
+                              )
+                            : null,
+                      ),
+                      onTap: () {
+                        setState(() {
+                          _isConfirmPasswordFieldTapped = true;
+                        });
+                      },
+                      onChanged: (text) {
+                        _validateConfirmPassword();
+                      },
+                    ),
+                    SizedBox(height: 100),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // 회원가입 버튼 (하단 고정)
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: ElevatedButton(
+              /*onPressed: () {
+                // 모든 입력 검증 후 성공적으로 회원가입 로직 처리
+                if (_nameError == null && _idError == null &&
+                    _passwordError == null && _confirmPasswordError == null) {
+                  Navigator.pushNamed(context, '/success');
+                }
+              },*/
+              onPressed: signupUser, // 회원가입 API 호출 함수 연결
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFFFF5833),
+                padding: EdgeInsets.symmetric(horizontal: 50, vertical: 16),
+              ),
+              child: Text(
+                '회원가입',
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFFBFBFB)),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
+
+
