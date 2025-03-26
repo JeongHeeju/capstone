@@ -1,73 +1,65 @@
-from django.db import models
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, User , PermissionsMixin
+from rest_framework import serializers
+from .models import User, UserProfile, FoodPreference, Allergy
 
-class UserManager(BaseUserManager):
-    def create_user(self, user_id, username, password=None):
-        if not user_id:
-            raise ValueError("Users must have a user ID")
-        
-        user = self.model(user_id=user_id, username=username)
-        user.set_password(password)
-        user.save(using=self._db)
-        return user
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['username', 'user_id', 'password']
 
-    def create_superuser(self, user_id, username, password=None):
-        user = self.create_user(user_id=user_id, username=username, password=password)
-        user.is_staff = True  
-        user.is_superuser = True  
-        user.is_active = True  
-        user.save(using=self._db)
-        return user
+class UserLoginSerializer(serializers.Serializer):
+    user_id = serializers.CharField(max_length=50)
+    password = serializers.CharField(max_length=100)
+
+class PersonalInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserProfile
+        fields = ['gender', 'birth_date', 'height', 'weight', 'medical_conditions']
+
+class FoodPreferenceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FoodPreference
+        fields = ['food_name', 'is_liked']
+        extra_kwargs = {
+            'user': {'read_only': True}  # 클라이언트에서 직접 설정하지 못하도록
+        }
+
+class AllergySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Allergy
+        fields = ['allergy_name']
+        extra_kwargs = {
+            'user': {'read_only': True}
+        }
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    food_preferences = FoodPreferenceSerializer(many=True, required=False)
+    allergies = AllergySerializer(many=True, required=False)
+
+    class Meta:
+        model = UserProfile
+        fields = [
+            'user_id', 'gender', 'birth_date', 'height', 'weight', 
+            'medical_conditions', 'food_preferences', 'allergies'
+        ]
+        extra_kwargs = {
+            'user_id': {'read_only': True}
+        }
+
+    def create(self, validated_data):
+        food_prefs_data = validated_data.pop('food_preferences', [])
+        allergy_data = validated_data.pop('allergies', [])
+        user_profile = UserProfile.objects.create(**validated_data)
+
+        for fp in food_prefs_data:
+            FoodPreference.objects.create(user=user_profile, **fp)
+        for al in allergy_data:
+            Allergy.objects.create(user=user_profile, **al)
+
+        return user_profile
+
+    def update(self, instance, validated_data):
+        return super().update(instance, validated_data)
 
 
-class User(AbstractBaseUser, PermissionsMixin):
-    user_id = models.CharField(max_length=50, unique=True)  # For login ID
-    username = models.CharField(max_length=50)              # For display name
-    password = models.CharField(max_length=100)
-
-    is_active = models.BooleanField(default=True)  # 로그인 허용 여부
-    is_staff = models.BooleanField(default=False)  # 관리자 페이지 접근 여부
-
-    objects = UserManager()
-
-    USERNAME_FIELD = 'user_id'  # 로그인 시 사용할 필드
-    REQUIRED_FIELDS = ['username']  # createsuperuser 시 입력할 필드
-
-    def __str__(self):
-        return self.username
-#설문조사 저장 내용
-class UserProfile(models.Model):
-    user_id = models.OneToOneField('users.User', on_delete=models.CASCADE)  # Django의 기본 User 모델과 연결
-    gender = models.CharField(max_length=10, choices=[('남성', '남성'), ('여성', '여성')])
-    birth_date = models.DateField()
-    height = models.FloatField()  # 신장
-    weight = models.FloatField()  # 몸무게
-    medical_conditions = models.TextField(blank=True)  # 진단받은 질환 (쉼표로 구분)
-
-    def __str__(self):
-        return self.user_id.username
 
 
-class FoodPreference(models.Model):
-    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='food_preferences')
-    food_name = models.CharField(max_length=100)  # 음식 이름
-    is_liked = models.BooleanField()  # 선호 여부
-
-    def __str__(self):
-        return f"{self.user.user_id.username} - {self.food_name} - {'Liked' if self.is_liked else 'Disliked'}"
-
-
-class Allergy(models.Model):
-    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='allergies')
-    allergy_name = models.CharField(max_length=100)  # 알러지 항목 이름
-
-    def __str__(self):
-        return f"{self.user.user_id.username} - {self.allergy_name}"
-      
-class UserSurveyRecord(models.Model):
-  user = models.OneToOneField(User, on_delete = models.CASCADE)
-  completed = models.BooleanField(default=False)
-  completed_at = models.DateTimeField(auto_now_add=True)
-  
-  def  __str__(self):
-    return f"{self.user.username} - {'Completed' if self.completed else 'Not Completed'}"
