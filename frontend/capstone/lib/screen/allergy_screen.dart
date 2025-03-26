@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'chat_screen.dart';
 
-import 'chat_screen.dart'; 
 
 class AllergyScreen extends StatefulWidget {
-  final List<String> selectedFoods; 
+  final List<String> selectedFoods;
 
-  AllergyScreen({this.selectedFoods = const []});
+  AllergyScreen({this.selectedFoods = const[]});
 
   @override
   State<AllergyScreen> createState() => _AllergyScreenState();
@@ -15,7 +16,6 @@ class AllergyScreen extends StatefulWidget {
 
 class _AllergyScreenState extends State<AllergyScreen> {
   List<String> allergies = [];
-
   bool showResult = false;
 
   void toggleAllergy(String allergy) {
@@ -28,23 +28,18 @@ class _AllergyScreenState extends State<AllergyScreen> {
     });
   }
 
-  // 실제 알러지 항목들 (UI 버튼용)
-  final List<String> allergyItems = [
-    '고등어', '새우', '오징어', '게',
-    '조개류', '난류 (가금류)', '소고기', '우유',
-    '돼지고기', '땅콩', '닭고기', '호두',
-    '잣', '대두', '복숭아', '밀',
-    '아황산류', '토마토',
-  ];
-
   // 서버로 알러지 정보 전송
   Future<void> saveAllergyInfo() async {
     final url = Uri.parse('http://127.0.0.1:8000/users/save_allergy_info/');
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
     try {
-      // POST 요청
       final response = await http.post(
         url,
-        headers: {"Content-Type": "application/json"},
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Token $token",
+        },
         body: json.encode(
           allergies.map((allergy) => {'allergy_name': allergy}).toList(),
         ),
@@ -55,45 +50,50 @@ class _AllergyScreenState extends State<AllergyScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('알러지 정보가 저장되었습니다.')),
         );
-        // 저장 성공 → "결과 화면"으로 전환
         setState(() {
           showResult = true;
         });
       } else {
         print('Failed to save allergy info: ${response.body}');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('알러지 정보 저장 실패: ${response.statusCode}')),
+          SnackBar(content: Text('알러지 정보 저장 실패')),
         );
       }
     } catch (e) {
       print('Error occurred: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('네트워크 오류가 발생했습니다. 다시 시도해주세요.')),
+        SnackBar(content: Text('네트워크 오류가 발생했습니다.')),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // showResult == true → 결과 화면
     if (showResult) {
       return _buildResultScreen();
     }
     return _buildAllergySelectionScreen();
   }
 
-  // [A] 알러지 선택 화면 UI
   Widget _buildAllergySelectionScreen() {
+    final List<String> allergyItems = [
+      '고등어', '새우', '오징어', '게',
+      '조개류', '난류 (가금류)', '소고기', '우유',
+      '돼지고기', '땅콩', '닭고기', '호두',
+      '잣', '대두', '복숭아', '밀',
+      '아황산류', '토마토',
+    ];
+
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Color(0xFFFBFBFB),
-        title: Text(
-          '식품 알레르기 체크',
-          style: TextStyle(color: Color(0xFF2F2F2F)),
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(56.0),
+        child: AppBar(
+          backgroundColor: Color(0xFFFBFBFB),
+          title: Text('식품 알레르기 체크', style: TextStyle(color: Color(0xFF2F2F2F))),
         ),
       ),
       body: Padding(
-        padding: EdgeInsets.all(10),
+        padding: EdgeInsets.all(20),
         child: Column(
           children: [
             Text(
@@ -105,8 +105,7 @@ class _AllergyScreenState extends State<AllergyScreen> {
               '푸렌즈가 알레르기 음식을 기억할게요!',
               style: TextStyle(fontSize: 12),
             ),
-            SizedBox(height: 20),
-            // 알러지 항목 버튼들
+            SizedBox(height: 30),
             Expanded(
               child: SingleChildScrollView(
                 child: Wrap(
@@ -136,39 +135,29 @@ class _AllergyScreenState extends State<AllergyScreen> {
                 ),
               ),
             ),
-            // 완료 버튼 → 서버 전송
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton(
-                  onPressed: saveAllergyInfo, // 여기서 서버 POST
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFFFF5833),
-                    padding: EdgeInsets.symmetric(horizontal: 50, vertical: 16),
-                  ),
-                  child: Text(
-                    '완료',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFFBFBFB)),
-                  ),
-                ),
-              ],
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: saveAllergyInfo,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFFFF5833),
+                padding: EdgeInsets.symmetric(horizontal: 50, vertical: 16),
+              ),
+              child: Text(
+                '완료',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFFBFBFB)),
+              ),
             ),
-            SizedBox(height: 10),
           ],
         ),
       ),
     );
   }
 
-  // [B] 결과 화면 UI
   Widget _buildResultScreen() {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Color(0xFFFBFBFB),
-        title: Text(
-          '결과 화면',
-          style: TextStyle(color: Color(0xFF2F2F2F)),
-        ),
+        title: Text('결과 화면', style: TextStyle(color: Color(0xFF2F2F2F))),
       ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
@@ -181,12 +170,19 @@ class _AllergyScreenState extends State<AllergyScreen> {
             Text('알레르기가 있는 음식:', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             Text(allergies.isNotEmpty ? allergies.join(', ') : '없음'),
             Spacer(),
-            // "채팅하러 가기" 버튼
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  Navigator.pushNamed(context, '/chat');
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ChatScreen(
+                        selectedFoods: widget.selectedFoods,
+                        allergies: allergies,
+                      ),
+                    ),
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Color(0xFFFF5833),
