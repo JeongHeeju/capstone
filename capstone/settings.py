@@ -38,7 +38,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'users',
+    'chatbot',
     'rest_framework',
+    'rest_framework.authtoken',
     'corsheaders',
     'django_extensions',
 ]
@@ -55,6 +57,7 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'capstone.urls'
+
 
 TEMPLATES = [
     {
@@ -138,4 +141,11 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:8080",  # 플러터 웹 실행 주소
 ]
 
+AUTH_USER_MODEL = 'users.User'
 
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+    ]
+}
