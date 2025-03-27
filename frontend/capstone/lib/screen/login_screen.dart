@@ -32,15 +32,44 @@ class _LoginScreenState extends State<LoginScreen> {
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('token', data['token']); // ✅ 토큰 저장
+      await prefs.setString('token', data['token']);
 
       print('Login successful. Token: ${data['token']}');
-      Navigator.pushNamed(context, '/survey');
+
+      // 유저 프로필 확인 
+      final profileCheckSuccess = await checkUserProfileExists(data['token']);
+      if (profileCheckSuccess) {
+        Navigator.pushNamed(context, '/chat');
+      } else {
+        Navigator.pushNamed(context, '/survey');
+      }
     } else {
       final error = json.decode(response.body)['error'];
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('로그인 실패: $error')),
       );
+    }
+  }
+
+  Future<bool> checkUserProfileExists(String token) async {
+    final url = Uri.parse('http://127.0.0.1:8000/users/profile_exists/');
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Token $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['exists'] == true;
+      } else {
+        return false;
+      }
+    } catch (e) {
+      print('Error checking profile: $e');
+      return false;
     }
   }
 
