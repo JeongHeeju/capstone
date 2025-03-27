@@ -43,6 +43,14 @@ def login_view(request):
     print('로그인된 user:',user,type(user))
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def profile_exists(request):
+  user = request.user
+  exists = UserProfile.objects.filter(user_id=user). exists()
+  return Response({'exists': exists})
+
+
 # 설문조사 저장 부분
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
