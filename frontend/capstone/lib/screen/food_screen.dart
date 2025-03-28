@@ -12,16 +12,21 @@ class FoodScreen extends StatefulWidget {
 
 class _FoodScreenState extends State<FoodScreen> {
   final List<Map<String, dynamic>> _foodChoices = [
-    {"food_name": "불고기", "is_liked": null},
-    {"food_name": "김치찌개", "is_liked": null},
-    {"food_name": "비빔밥", "is_liked": null},
-    {"food_name": "떡볶이", "is_liked": null},
-    {"food_name": "삼겹살", "is_liked": null},
+    {"food_name": "불고기", "is_liked": null, "image": "assets/bulgogi.png"},
+    {"food_name": "김치찌개", "is_liked": null, "image": "assets/kimchi.png"},
+    {"food_name": "비빔밥", "is_liked": null, "image": "assets/bibimbap.png"},
+    {"food_name": "떡볶이", "is_liked": null, "image": "assets/tteokbokki.png"},
+    {"food_name": "삼겹살", "is_liked": null, "image": "assets/samgyeopsal.png"},
+    {"food_name": "초밥", "is_liked": null, "image": "assets/sushi.png"},
+    {"food_name": "햄버거", "is_liked": null, "image": "assets/burger.png"},
+    {"food_name": "쌀국수", "is_liked": null, "image": "assets/pho.png"},
+    {"food_name": "샐러드", "is_liked": null, "image": "assets/salad.png"},
+    {"food_name": "케이크", "is_liked": null, "image": "assets/cake.png"},
   ];
+
   int currentIndex = 0;
   int? selectedButtonIndex;
   Timer? _timer;
-
   final List<String> selectedFoods = [];
 
   void selectFood(bool liked) {
@@ -119,6 +124,7 @@ class _FoodScreenState extends State<FoodScreen> {
   @override
   Widget build(BuildContext context) {
     final currentFood = _foodChoices[currentIndex]["food_name"];
+    final currentImagePath = _foodChoices[currentIndex]["image"];
 
     return Scaffold(
       appBar: PreferredSize(
@@ -154,7 +160,7 @@ class _FoodScreenState extends State<FoodScreen> {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(16),
                       child: Image.asset(
-                        'assets/food${currentIndex + 1}.png',
+                        currentImagePath,
                         height: 200,
                         fit: BoxFit.cover,
                       ),
