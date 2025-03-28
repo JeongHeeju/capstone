@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'chat_screen.dart';
 
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'chat_screen.dart';
+
 class HoverTextButton extends StatelessWidget {
   final String text;
   final Color textColor;
@@ -28,6 +32,29 @@ class _SurveyScreenState extends State<SurveyScreen> {
   List<String> allergies = [];
   bool showResult = false;
 
+  Future<void> skipSurvey() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('토큰이 없습니다. 다시 로그인 해주세요.')),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChatScreen(
+          userToken: token,
+          // selectedFoods: [], // 필요한 경우 넘기기
+          // allergies: [],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -36,7 +63,6 @@ class _SurveyScreenState extends State<SurveyScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // 텍스트 구성
             RichText(
               textAlign: TextAlign.center,
               text: TextSpan(
@@ -53,8 +79,6 @@ class _SurveyScreenState extends State<SurveyScreen> {
               ),
             ),
             SizedBox(height: 40),
-
-            // 설문조사 시작 버튼
             ElevatedButton(
               onPressed: () {
                 Navigator.pushNamed(context, '/health');
@@ -69,20 +93,8 @@ class _SurveyScreenState extends State<SurveyScreen> {
               ),
             ),
             SizedBox(height: 20),
-
-            // 건너뛰기
             TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ChatScreen(
-                     // selectedFoods: widget.selectedFoods,
-                     // allergies: allergies,
-                    ),
-                  ),
-                );
-              },
+              onPressed: skipSurvey,
               child: Text(
                 '건너뛰기',
                 style: TextStyle(color: Color(0xFF9F9F9F), fontSize: 16),
