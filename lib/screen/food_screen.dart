@@ -59,7 +59,7 @@ class FoodScreen extends StatefulWidget {
 }
 
 class _FoodScreenState extends State<FoodScreen> {
-  final List<String> foodList = ['불고기', '김치찌개', '비빔밥', '떡볶이', '삼겹살'];
+  final List<String> foodList = ['김치찌개', '비빔밥', '떡볶이', '짜장면', '초밥', '햄버거', '삼겹살', '쌀국수', '샐러드', '케이크'];
   final List<String> selectedFoods = [];
   int currentIndex = 0; // 현재 음식 인덱스
   int? selectedButtonIndex; // 선택된 버튼의 인덱스 (0: 선호, 1: 비선호)

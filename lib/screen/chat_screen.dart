@@ -132,7 +132,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                     color: Color(0xFF2F2F2F)), // 새 채팅 아이콘
                                 onPressed: () {
                                   //widget.onStartNewChat(); // 새 채팅 시작
-                                  Navigator.pop(context); // 드로어 닫기
+                                  Navigator.pushNamed(context, '/mypage'); // 드로어 닫기
                                 },
                               ),
                             ],

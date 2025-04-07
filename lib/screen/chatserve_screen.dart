@@ -227,7 +227,7 @@ class _ChatserveScreenState extends State<ChatserveScreen> {
                       _showProfileMenu(context); // 프로필 메뉴 표시
                     },
                   ),*/
-                  SizedBox(height: 20),
+                  SizedBox(height: 16),
                   //Divider(color: Color(0xFF9F9F9F)),
                   ...sideMenuItems.map((item) {
                     return ListTile(

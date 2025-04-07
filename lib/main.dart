@@ -6,6 +6,7 @@ import 'screen/success_screen.dart';
 import 'screen/survey_screen.dart';
 import 'screen/health_screen.dart';
 import 'screen/food_screen.dart';
+import 'screen/mypage_screen.dart';
 import 'package:google_fonts/google_fonts.dart'; // google_fonts 패키지 import
 import 'package:flutter_localizations/flutter_localizations.dart'; // 로컬라이제이션 패키지
 
@@ -101,6 +102,7 @@ class MyApp extends StatelessWidget {
             ),
         '/health': (context) => HealthScreen(),
         '/food': (context) => FoodScreen(),
+        '/mypage': (context) => MypageScreen(),
       },
     );
   }
