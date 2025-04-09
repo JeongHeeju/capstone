@@ -1,3 +1,4 @@
+// food_screen.dart
 import 'package:flutter/material.dart';
 import 'allergy_screen.dart';
 import 'dart:convert';
@@ -23,6 +24,19 @@ class _FoodScreenState extends State<FoodScreen> {
     {"food_name": "샐러드", "is_liked": null, "image": "assets/salad.png"},
     {"food_name": "케이크", "is_liked": null, "image": "assets/cake.png"},
   ];
+
+  final Map<String, List<String>> foodTags = {
+    "불고기": ["양념고기", "익힌고기", "소고기", "달짝지근한 맛"],
+    "김치찌개": ["매운맛", "국물요리", "김치"],
+    "비빔밥": ["야채", "밥", "고추장", "비벼먹는"],
+    "떡볶이": ["맵고단", "떡", "매운맛", "분식"],
+    "삼겹살": ["구이", "돼지고기", "고기"],
+    "초밥": ["생선", "밥", "일식", "회"],
+    "햄버거": ["패스트푸드", "고기", "빵", "양상추"],
+    "쌀국수": ["베트남", "국물요리", "쌀면"],
+    "샐러드": ["야채", "건강식", "가벼운식사"],
+    "케이크": ["디저트", "달콤한", "베이커리"],
+  };
 
   int currentIndex = 0;
   int? selectedButtonIndex;
@@ -80,6 +94,7 @@ class _FoodScreenState extends State<FoodScreen> {
       return {
         "food_name": f["food_name"],
         "is_liked": f["is_liked"] ?? false,
+        "tags": foodTags[f["food_name"]] ?? [],
       };
     }).toList();
 
@@ -127,47 +142,31 @@ class _FoodScreenState extends State<FoodScreen> {
     final currentImagePath = _foodChoices[currentIndex]["image"];
 
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(56.0),
-        child: AppBar(
-          backgroundColor: Color(0xFFFBFBFB),
-          title: Text('음식 선호도 체크', style: TextStyle(color: Color(0xFF2F2F2F))),
-          flexibleSpace: Container(
-            decoration: BoxDecoration(color: Color(0xFFFBFBFB)),
-          ),
-        ),
+      appBar: AppBar(
+        title: Text('음식 선호도 체크'),
+        backgroundColor: Color(0xFFFBFBFB),
       ),
       body: Padding(
         padding: EdgeInsets.all(20),
         child: Column(
           children: [
             Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    Text('선호하는 음식을 3개 이상 선택해 주세요',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    SizedBox(height: 5),
-                    Text('선호에 맞는 음식을 추천해드려요',
-                        style: TextStyle(fontSize: 12)),
-                    SizedBox(height: 50),
-                    Text('(${currentIndex + 1}/${_foodChoices.length})',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                    SizedBox(height: 5),
-                    Text(currentFood,
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                    SizedBox(height: 10),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Image.asset(
-                        currentImagePath,
-                        height: 200,
-                        fit: BoxFit.cover,
-                      ),
+              child: Column(
+                children: [
+                  Text('선호하는 음식을 선택해 주세요'),
+                  SizedBox(height: 30),
+                  Text('(${currentIndex + 1}/${_foodChoices.length})'),
+                  Text(currentFood, style: TextStyle(fontSize: 24)),
+                  SizedBox(height: 10),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.asset(
+                      currentImagePath,
+                      height: 200,
+                      fit: BoxFit.cover,
                     ),
-                    SizedBox(height: 50),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
             Row(
@@ -175,14 +174,14 @@ class _FoodScreenState extends State<FoodScreen> {
               children: [
                 ElevatedButton.icon(
                   onPressed: () => selectFood(true),
-                  icon: Icon(Icons.thumb_up, color: selectedButtonIndex == 0 ? Color(0xFFFBFBFB) : Color(0xFF2F2F2F)),
-                  label: Text('선호', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  icon: Icon(Icons.thumb_up),
+                  label: Text('선호'),
                   style: getButtonStyle(0),
                 ),
                 ElevatedButton.icon(
                   onPressed: () => selectFood(false),
-                  icon: Icon(Icons.thumb_down, color: selectedButtonIndex == 1 ? Color(0xFFFBFBFB) : Color(0xFF2F2F2F)),
-                  label: Text('비선호', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  icon: Icon(Icons.thumb_down),
+                  label: Text('비선호'),
                   style: getButtonStyle(1),
                 ),
               ],
@@ -193,3 +192,4 @@ class _FoodScreenState extends State<FoodScreen> {
     );
   }
 }
+
