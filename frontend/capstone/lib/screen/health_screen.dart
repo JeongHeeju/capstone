@@ -13,29 +13,37 @@ class HealthScreen extends StatefulWidget {
 class _HealthScreenState extends State<HealthScreen> {
   bool _isMalePressed = false;
   bool _isFemalePressed = false;
-
   int? _selectedYear;
   int? _selectedMonth;
   int? _selectedDay;
 
   final _heightController = TextEditingController();
   final _weightController = TextEditingController();
-  final _medicalConditionsController = TextEditingController();
 
   final List<int> _years = List.generate(100, (index) => 2023 - index);
   final List<int> _months = List.generate(12, (index) => index + 1);
   final List<int> _days = List.generate(31, (index) => index + 1);
 
+  final List<String> _medicalConditions = [
+    '고혈압', '저혈압', '당뇨', '심장병', '천식', '암', '비만', '저체중', '갑상선 질환', '간 질환', '신장 질환', '고지혈증', '통풍'
+  ];
+  List<String> _selectedConditions = [];
+
   ScrollController _scrollController = ScrollController();
 
   void _toggleGenderSelection(String gender) {
     setState(() {
-      if (gender == 'male') {
-        _isMalePressed = true;
-        _isFemalePressed = false;
+      _isMalePressed = gender == 'male';
+      _isFemalePressed = gender == 'female';
+    });
+  }
+
+  void _toggleCondition(String condition) {
+    setState(() {
+      if (_selectedConditions.contains(condition)) {
+        _selectedConditions.remove(condition);
       } else {
-        _isMalePressed = false;
-        _isFemalePressed = true;
+        _selectedConditions.add(condition);
       }
     });
   }
@@ -85,24 +93,21 @@ class _HealthScreenState extends State<HealthScreen> {
           'birth_date': birthDate,
           'height': double.tryParse(_heightController.text),
           'weight': double.tryParse(_weightController.text),
-          'medical_conditions': _medicalConditionsController.text,
+          'medical_conditions': _selectedConditions.join(', '),
         }),
       );
 
       if (response.statusCode == 201) {
-        print('Personal info saved successfully');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('정보가 저장되었습니다.')),
         );
         Navigator.pushNamed(context, '/food');
       } else {
-        print('Failed to save personal info: ${response.body}');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('정보 저장에 실패했습니다. 다시 시도해주세요.')),
         );
       }
     } catch (e) {
-      print('Error occurred: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('네트워크 오류가 발생했습니다. 다시 시도해주세요.')),
       );
@@ -114,22 +119,15 @@ class _HealthScreenState extends State<HealthScreen> {
     _scrollController.dispose();
     _heightController.dispose();
     _weightController.dispose();
-    _medicalConditionsController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(56.0),
-        child: AppBar(
-          backgroundColor: Color(0xFFFBFBFB),
-          title: Text('기본 설문', style: TextStyle(color: Color(0xFF2F2F2F))),
-          flexibleSpace: Container(
-            decoration: BoxDecoration(color: Color(0xFFFBFBFB)),
-          ),
-        ),
+      appBar: AppBar(
+        backgroundColor: Color(0xFFFBFBFB),
+        title: Text('기본 설문', style: TextStyle(color: Color(0xFF2F2F2F))),
       ),
       body: SingleChildScrollView(
         controller: _scrollController,
@@ -147,9 +145,8 @@ class _HealthScreenState extends State<HealthScreen> {
                   _buildGenderButton('여성', _isFemalePressed, () => _toggleGenderSelection('female')),
                 ],
               ),
-              SizedBox(height: 50),
-              Text('생년월일', style: TextStyle(fontSize: 16, color: Color(0xFF2F2F2F))),
-              SizedBox(height: 10),
+              SizedBox(height: 30),
+              Text('생년월일', style: TextStyle(fontSize: 16)),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
@@ -161,19 +158,30 @@ class _HealthScreenState extends State<HealthScreen> {
               SizedBox(height: 30),
               TextField(
                 controller: _heightController,
-                decoration: InputDecoration(labelText: '신장 (cm)', hintText: '소수점 첫 번째까지 가능'),
+                decoration: InputDecoration(labelText: '신장 (cm)'),
                 keyboardType: TextInputType.number,
               ),
               SizedBox(height: 30),
               TextField(
                 controller: _weightController,
-                decoration: InputDecoration(labelText: '몸무게 (kg)', hintText: '소수점 첫 번째까지 가능'),
+                decoration: InputDecoration(labelText: '몸무게 (kg)'),
                 keyboardType: TextInputType.number,
               ),
               SizedBox(height: 30),
-              TextField(
-                controller: _medicalConditionsController,
-                decoration: InputDecoration(labelText: '진단받은 질환 (없으면 생략 가능)'),
+              Text('진단받은 질환', style: TextStyle(fontSize: 16)),
+              Wrap(
+                spacing: 10,
+                children: _medicalConditions.map((condition) {
+                  final isSelected = _selectedConditions.contains(condition);
+                  return ChoiceChip(
+                    label: Text(condition),
+                    selected: isSelected,
+                    onSelected: (_) => _toggleCondition(condition),
+                    selectedColor: Color(0xFFFF5833),
+                    labelStyle: TextStyle(color: isSelected ? Colors.white : Color(0xFF2F2F2F)),
+                    backgroundColor: Color(0xFFFBFBFB),
+                  );
+                }).toList(),
               ),
               SizedBox(height: 50),
               Center(
@@ -183,10 +191,7 @@ class _HealthScreenState extends State<HealthScreen> {
                     backgroundColor: Color(0xFFFF5833),
                     padding: EdgeInsets.symmetric(horizontal: 50, vertical: 16),
                   ),
-                  child: Text(
-                    '다음',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFFBFBFB)),
-                  ),
+                  child: Text('다음', style: TextStyle(fontSize: 16, color: Color(0xFFFBFBFB))),
                 ),
               ),
             ],
@@ -206,10 +211,7 @@ class _HealthScreenState extends State<HealthScreen> {
           borderRadius: BorderRadius.circular(50),
           border: Border.all(color: isSelected ? Color(0xFF2F2F2F) : Color(0xFFE0E0E0), width: 1),
         ),
-        child: Text(
-          label,
-          style: TextStyle(fontSize: 12, color: Color(0xFF2F2F2F)),
-        ),
+        child: Text(label, style: TextStyle(fontSize: 12, color: Color(0xFF2F2F2F))),
       ),
     );
   }
@@ -224,11 +226,11 @@ class _HealthScreenState extends State<HealthScreen> {
       ),
       child: DropdownButton<int>(
         value: value,
-        hint: Text(hint, style: TextStyle(fontSize: 12, color: Color(0xFF2F2F2F))),
+        hint: Text(hint, style: TextStyle(fontSize: 12)),
         items: items.map((item) {
           return DropdownMenuItem<int>(
             value: item,
-            child: Text(item.toString().padLeft(2, '0'), style: TextStyle(fontSize: 12, color: Color(0xFF2F2F2F))),
+            child: Text(item.toString().padLeft(2, '0'), style: TextStyle(fontSize: 12)),
           );
         }).toList(),
         onChanged: onChanged,
@@ -238,5 +240,3 @@ class _HealthScreenState extends State<HealthScreen> {
     );
   }
 }
-
-
