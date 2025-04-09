@@ -18,9 +18,9 @@ class PersonalInfoSerializer(serializers.ModelSerializer):
 class FoodPreferenceSerializer(serializers.ModelSerializer):
     class Meta:
         model = FoodPreference
-        fields = ['food_name', 'is_liked']
+        fields = ['food_name', 'is_liked', 'tags']  # tags 추가
         extra_kwargs = {
-            'user': {'read_only': True}  # 클라이언트에서 직접 설정하지 못하도록
+            'user': {'read_only': True}
         }
 
 class AllergySerializer(serializers.ModelSerializer):
