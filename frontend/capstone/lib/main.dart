@@ -8,11 +8,9 @@ import 'screen/success_screen.dart';
 import 'screen/survey_screen.dart';
 import 'screen/health_screen.dart';
 import 'screen/food_screen.dart';
-import 'screen/allergy_screen.dart';
 import 'screen/chat_screen.dart';
-import 'screen/chatserve_screen.dart';
+import 'screen/mypage_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 
 void main() {
   runApp(const MyApp());
@@ -25,16 +23,16 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       theme: ThemeData(
-        scaffoldBackgroundColor: Color(0xFFFBFBFB),
-        textTheme: TextTheme(
+        scaffoldBackgroundColor: const Color(0xFFFBFBFB),
+        textTheme: const TextTheme(
           bodyMedium: TextStyle(color: Color(0xFF323232)),
         ),
-        textSelectionTheme: TextSelectionThemeData(
+        textSelectionTheme: const TextSelectionThemeData(
           cursorColor: Color(0xFF323232),
           selectionColor: Color(0xFFFF5833),
           selectionHandleColor: Color(0xFFFF5833),
         ),
-        inputDecorationTheme: InputDecorationTheme(
+        inputDecorationTheme: const InputDecorationTheme(
           labelStyle: TextStyle(color: Color(0xFF323232)),
           focusedBorder: OutlineInputBorder(
             borderSide: BorderSide(color: Color(0xFFFF5833)),
@@ -51,21 +49,32 @@ class MyApp extends StatelessWidget {
         '/health': (context) => HealthScreen(),
         '/food': (context) => FoodScreen(),
         '/allergy': (context) => AllergyScreen(),
-        '/chatserve': (context) => ChatserveScreen(),
+        '/chatserve': (context) => ChatserveScreen(
+          onStartNewChat: () {
+            // 새 채팅 버튼을 눌렀을 때의 동작 정의
+            Navigator.pushNamed(context, '/chat');
+          },
+        ),
+        '/mypage': (context) => MypageScreen(),
       },
       onGenerateRoute: (settings) {
         if (settings.name == '/chat') {
-          return MaterialPageRoute(builder: (context) => FutureBuilder(
+          return MaterialPageRoute(
+            builder: (context) => FutureBuilder(
               future: SharedPreferences.getInstance(),
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
+                if (snapshot.connectionState == ConnectionState.done &&
+                    snapshot.hasData) {
                   final prefs = snapshot.data!;
                   final userToken = prefs.getString('token') ?? '';
                   return ChatScreen(userToken: userToken);
                 }
-                return Scaffold(body: Center(child: CircularProgressIndicator()));
-              }
-          ));
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              },
+            ),
+          );
         }
         return null;
       },
@@ -76,7 +85,7 @@ class MyApp extends StatelessWidget {
 class CustomScaffold extends StatelessWidget {
   final Widget child;
 
-  CustomScaffold({required this.child});
+  const CustomScaffold({required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -105,7 +114,7 @@ class _HoverAndClickButtonState extends State<HoverAndClickButton> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Hover & Click Button Example')),
+      appBar: AppBar(title: const Text('Hover & Click Button Example')),
       body: Center(
         child: MouseRegion(
           onEnter: (_) => setState(() => isHovered = true),
@@ -115,12 +124,14 @@ class _HoverAndClickButtonState extends State<HoverAndClickButton> {
             onTapUp: (_) => setState(() => isPressed = false),
             onTapCancel: () => setState(() => isPressed = false),
             child: AnimatedContainer(
-              duration: Duration(milliseconds: 200),
+              duration: const Duration(milliseconds: 200),
               width: 150,
               height: 50,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: isPressed || isHovered ? Color(0xFFFF5833) : Color(0xFFFBFBFB),
+                color: isPressed || isHovered
+                    ? const Color(0xFFFF5833)
+                    : const Color(0xFFFBFBFB),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
