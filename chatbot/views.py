@@ -2,18 +2,29 @@ import json, re, os, logging
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-#from langchain_openai import ChatOpenAI#
 from langchain_community.chat_models import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from dotenv import load_dotenv
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import AllowAny
+from users.models import UserProfile, FoodPreference, Allergy
 
+# 음식별 태그 매핑
+FOOD_TAGS = {
+    "불고기": ["양념고기", "익힌고기", "소고기", "달짝지근한 맛"],
+    "김치찌개": ["매운맛", "국물요리", "돼지고기", "김치"],
+    "비빔밥": ["채소", "고추장", "비벼먹는 음식"],
+    "떡볶이": ["떡", "매운맛", "간식", "분식"],
+    "삼겹살": ["구이", "돼지고기", "쌈채소"],
+    "초밥": ["해산물", "생선", "밥", "일식"],
+    "햄버거": ["패스트푸드", "빵", "고기", "치즈"],
+    "쌀국수": ["면요리", "국물요리", "베트남 음식"],
+    "샐러드": ["채소", "건강식", "다이어트식"],
+    "케이크": ["디저트", "달콤한맛", "빵", "크림"],
+}
 
-from users.models import User, UserProfile, FoodPreference, Allergy
-
-# 환경 변수 로드
 load_dotenv()
+logger = logging.getLogger(__name__)
 
 def get_last_food_state(session):
     return session.get("last_was_food", False)
@@ -21,9 +32,6 @@ def get_last_food_state(session):
 def set_last_food_state(session, is_food):
     session["last_was_food"] = is_food
     session.modified = True
-
-load_dotenv()
-logger = logging.getLogger(__name__)
 
 class ChatAPIView(APIView):
     permission_classes = [AllowAny]
@@ -50,18 +58,28 @@ class ChatAPIView(APIView):
                     user_profile = UserProfile.objects.get(user_id=request.user)
                 except UserProfile.DoesNotExist:
                     return Response({"error": "UserProfile not found."}, status=status.HTTP_400_BAD_REQUEST)
+
                 preferences = FoodPreference.objects.filter(user=user_profile)
                 allergies = Allergy.objects.filter(user=user_profile)
                 medical_conditions_list = []
                 if user_profile.medical_conditions:
                     medical_conditions_list = [c.strip() for c in user_profile.medical_conditions.split(',')]
+
+                liked_foods = [p.food_name for p in preferences if p.is_liked]
+                disliked_foods = [p.food_name for p in preferences if not p.is_liked]
+
+                liked_tags = [tag for food in liked_foods for tag in FOOD_TAGS.get(food, [])]
+                disliked_tags = [tag for food in disliked_foods for tag in FOOD_TAGS.get(food, [])]
+
                 system_prompt = (
                     "You are 푸렌즈, an AI assistant specializing in food and dining.\n"
                     "User Profile Information:\n"
                     f"Medical Conditions: {medical_conditions_list}\n"
                     f"Allergies: {[al.allergy_name for al in allergies]}\n"
-                    f"Liked Foods: {[p.food_name for p in preferences if p.is_liked]}\n"
-                    f"Disliked Foods: {[p.food_name for p in preferences if not p.is_liked]}\n"
+                    f"Liked Foods: {liked_foods}\n"
+                    f"Liked Tags: {liked_tags}\n"
+                    f"Disliked Foods: {disliked_foods}\n"
+                    f"Disliked Tags: {disliked_tags}\n"
                     "Based on this information, provide personalized meal suggestions in Korean.\n"
                 )
             else:
@@ -75,17 +93,15 @@ class ChatAPIView(APIView):
                 "You are a classifier that decides if a user message is strictly about food or dining. "
                 "Respond ONLY with 'Yes' or 'No'.\nQuestion: ",
                 user_message
-            )
-            if not primary_decision:
-                primary_decision = "no"
+            ) or "no"
 
             final_decision = self.keyword_based_correction(user_message, primary_decision)
 
             last_was_food = get_last_food_state(request.session)
             followup_pattern = r"(말고|더\s*없|추가|다른\s*메뉴|색다른|새로운|또\s*뭐)"
-            if last_was_food and final_decision == "no":
-                if re.search(followup_pattern, user_message.lower()):
-                    final_decision = "yes"
+            if last_was_food and final_decision == "no" and re.search(followup_pattern, user_message.lower()):
+                final_decision = "yes"
+
             is_food_related = (final_decision == "yes")
 
             if is_food_related:
@@ -103,12 +119,9 @@ class ChatAPIView(APIView):
                 final_answer = "푸렌즈는 음식 관련 질문에만 답변할 수 있어요!"
                 set_last_food_state(request.session, False)
 
-            # 로그인 상태 표시 제거
-            final_answer_with_status = final_answer
-
             return Response({
                 "user_message": user_message,
-                "response": final_answer_with_status,
+                "response": final_answer,
             }, status=status.HTTP_200_OK)
 
         except Exception as e:
