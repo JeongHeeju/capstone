@@ -83,6 +83,7 @@ def save_food_preferences(request):
     return Response({'message': 'Food preferences saved successfully'}, status=status.HTTP_201_CREATED)
 
 
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def save_allergy_info(request):
