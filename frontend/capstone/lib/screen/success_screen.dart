@@ -11,31 +11,54 @@ class _SuccessScreenState extends State<SuccessScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-                '회원 가입이\n완료되었습니다',
-                style: TextStyle(fontSize: 30)
+      backgroundColor: Color(0xFFFBFBFB),
+      body: Stack(
+        children: [
+          Positioned(
+            top: 200, 
+            left: 460, 
+            child: Image.asset(
+              'assets/icon2.png',
+              height: 120,
             ),
-            SizedBox(height: 20),
-            ElevatedButton(onPressed: () {
-              Navigator.pushNamed(context, '/login');
-            },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFFFF5833),
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              ),
-              child: Text(
-                '로그인',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold,
-                  color: Color(0xFFFBFBFB),
+          ),
+
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(height: 20), // 텍스트를 조금 더 아래로 내리기 위해 추가
+                Text(
+                  '밥 친구가 된 걸\n환영해요!',
+                  style: TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2F2F2F),
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-              ),
+                SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/login');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFFFF5833),
+                    padding: EdgeInsets.symmetric(horizontal: 70, vertical: 20),
+                  ),
+                  child: Text(
+                    '로그인',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFFBFBFB),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
