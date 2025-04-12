@@ -3,15 +3,16 @@ import 'chat_screen.dart';
 import '../main.dart';
 
 class SurveyScreen extends StatefulWidget {
-  final List<String> selectedFoods;
+  //final List<String> selectedFoods;
 
-  SurveyScreen({required this.selectedFoods});
+  //SurveyScreen({required this.selectedFoods});
 
   @override
   State<SurveyScreen> createState() => _SurveyScreenState();
 }
 
 class _SurveyScreenState extends State<SurveyScreen> {
+  List<String> selectedFoods = [];
   List<String> allergies = [];
   bool showResult = false;
   @override
@@ -44,7 +45,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
                 padding: EdgeInsets.symmetric(horizontal: 30, vertical: 20),
               ),
               child: Text(
-                '설문조사 하러 가기',
+                '설문조사 하기',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold,
                   color: Color(0xFFFBFBFB),
                 ),
@@ -62,7 +63,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
                 Navigator.push(context,
                   MaterialPageRoute(
                     builder: (context) => ChatScreen(
-                      selectedFoods: widget.selectedFoods, // 전달
+                      selectedFoods: selectedFoods, // 전달
                       allergies: allergies, // 전달
                     ),
                   ),

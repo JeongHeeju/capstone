@@ -544,7 +544,9 @@ class _HealthScreenState extends State<HealthScreen> {
                 ? Color(0xFFE0E0E0) // 스크롤 시 색상 변경
                 : Color(0xFFFBFBFB),*/ // 기본색
             title: Text('기본 설문', style: TextStyle(color: Color(0xFF2F2F2F))),
-            flexibleSpace: Container(
+            centerTitle: true,
+            automaticallyImplyLeading: false,
+          flexibleSpace: Container(
             decoration: BoxDecoration(
             color: Color(0xFFFBFBFB), // 배경색 설정
             ),
@@ -558,7 +560,7 @@ class _HealthScreenState extends State<HealthScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('성별', style: TextStyle(fontSize: 16)),
+              Text('성별', style: TextStyle(fontSize: 16, color: Color(0xFF2F2F2F))),
               SizedBox(height: 5),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -693,15 +695,15 @@ class _HealthScreenState extends State<HealthScreen> {
               ),
               SizedBox(height: 50),
               TextField(
-                decoration: InputDecoration(labelText: '신장', hintText: '소수점 첫 번째까지 가능', hintStyle: TextStyle(color: Color(0xFFE0E0E0))),
+                decoration: InputDecoration(labelText: '신장', labelStyle: TextStyle(color: Color(0xFF2F2F2F)), hintText: '소수점 첫 번째까지 가능', hintStyle: TextStyle(color: Color(0xFFE0E0E0))),
               ),
               SizedBox(height: 50),
               TextField(
-                decoration: InputDecoration(labelText: '몸무게', hintText: '소수점 첫 번째까지 가능', hintStyle: TextStyle(color: Color(0xFFE0E0E0))),
+                decoration: InputDecoration(labelText: '몸무게', labelStyle: TextStyle(color: Color(0xFF2F2F2F)),hintText: '소수점 첫 번째까지 가능', hintStyle: TextStyle(color: Color(0xFFE0E0E0))),
               ),
               SizedBox(height: 50),
               TextField(
-                decoration: InputDecoration(labelText: '진단받은 질환', hintText: '모두 입력해주세요', hintStyle: TextStyle(color: Color(0xFFE0E0E0))),
+                decoration: InputDecoration(labelText: '진단받은 질환', labelStyle: TextStyle(color: Color(0xFF2F2F2F)), hintText: '모두 입력해주세요', hintStyle: TextStyle(color: Color(0xFFE0E0E0))),
               ),
               SizedBox(height: 100),
               //다음 버튼(가운데 정렬)

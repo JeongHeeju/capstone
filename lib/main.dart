@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_projects/screen/allergy_provider.dart';
+import 'package:flutter_projects/screen/food_provider.dart';
 import 'screen/start_screen.dart';
 import 'screen/login_screen.dart';
 import 'screen/signup_screen.dart';
@@ -9,9 +11,16 @@ import 'screen/food_screen.dart';
 import 'screen/mypage_screen.dart';
 import 'package:google_fonts/google_fonts.dart'; // google_fonts 패키지 import
 import 'package:flutter_localizations/flutter_localizations.dart'; // 로컬라이제이션 패키지
+import 'package:provider/provider.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(MultiProvider(
+    providers: [
+      ChangeNotifierProvider(create: (_) => AllergyProvider()),
+      ChangeNotifierProvider(create: (_) => FoodProvider()), // ← 여기!
+    ],
+    child: MyApp(),
+  ),);
 }
 
 class MyApp extends StatelessWidget {
@@ -77,7 +86,7 @@ class MyApp extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             backgroundColor: Color(0xFFFF5833), // 배경색 설정
             foregroundColor: Color(0xFFFBFBFB), // 텍스트 색상 설정
-            //splashFactory: NoSplash.splashFactory, // 클릭 시 효과 제거
+            splashFactory: NoSplash.splashFactory, // 클릭 시 효과 제거
           ),
         ),
 
@@ -94,12 +103,10 @@ class MyApp extends StatelessWidget {
         '/start': (context) => StartScreen(
               selectedFoods: [],
             ),
-        '/login': (context) => LoginScreen(selectedFoods: [],),
+        '/login': (context) => LoginScreen(),
         '/signup': (context) => SignupScreen(),
         '/success': (context) => SuccessScreen(),
-        '/survey': (context) => SurveyScreen(
-              selectedFoods: [],
-            ),
+        '/survey': (context) => SurveyScreen(),
         '/health': (context) => HealthScreen(),
         '/food': (context) => FoodScreen(),
         '/mypage': (context) => MypageScreen(),

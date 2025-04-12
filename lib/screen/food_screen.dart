@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'allergy_screen.dart';
 import 'dart:async';
+import 'food_provider.dart';
 
 /*class FoodScreen extends StatefulWidget {
   const FoodScreen({super.key});
@@ -54,21 +56,30 @@ import 'dart:async';
   }*/
 
 class FoodScreen extends StatefulWidget {
+  const FoodScreen({super.key});
+
   @override
-  _FoodScreenState createState() => _FoodScreenState();
+  State<FoodScreen> createState() => _FoodScreenState();
 }
 
 class _FoodScreenState extends State<FoodScreen> {
   final List<String> foodList = ['김치찌개', '비빔밥', '떡볶이', '짜장면', '초밥', '햄버거', '삼겹살', '쌀국수', '샐러드', '케이크'];
-  final List<String> selectedFoods = [];
   int currentIndex = 0; // 현재 음식 인덱스
   int? selectedButtonIndex; // 선택된 버튼의 인덱스 (0: 선호, 1: 비선호)
   Timer? _timer;  // 타이머 변수 추가
 
   // 선택된 음식 처리 함수
   void selectFood(bool isLiked) {
+    final foodProvider = Provider.of<FoodProvider>(context, listen: false);
+    final currentFood = foodList[currentIndex];
+
     if (isLiked) {
-      selectedFoods.add(foodList[currentIndex]); // 선호 음식 추가
+      foodProvider.toggleFood(currentFood); // 선택 추가 또는 해제
+    } else {
+      // 비선호일 경우에도 이미 선택돼있다면 해제
+      if (foodProvider.selectedFoods.contains(currentFood)) {
+        foodProvider.toggleFood(currentFood);
+      }
     }
 
     setState(() {
@@ -91,7 +102,7 @@ class _FoodScreenState extends State<FoodScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => AllergyScreen(selectedFoods: selectedFoods),
+            builder: (context) => const AllergyScreen(),
           ),
         );
       }
@@ -127,6 +138,7 @@ class _FoodScreenState extends State<FoodScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentFood = foodList[currentIndex];
     return Scaffold(
       /*appBar: AppBar(
         backgroundColor: Color(0xFFFBFBFB),
@@ -141,7 +153,9 @@ class _FoodScreenState extends State<FoodScreen> {
           /*backgroundColor: _scrollController.hasClients && _scrollController.offset > 3
                 ? Color(0xFFE0E0E0) // 스크롤 시 색상 변경
                 : Color(0xFFFBFBFB),*/ // 기본색
-          title: Text('음식 선호도 체크', style: TextStyle(color: Color(0xFF2F2F2F))),
+          title: Text('음식 선호도', style: TextStyle(color: Color(0xFF2F2F2F))),
+          centerTitle: true,
+          automaticallyImplyLeading: false,
           flexibleSpace: Container(
             decoration: BoxDecoration(
               color: Color(0xFFFBFBFB), // 배경색 설정
@@ -157,25 +171,25 @@ class _FoodScreenState extends State<FoodScreen> {
               child: SingleChildScrollView( // 스크롤 가능한 영역
                 child: Column(
                   children: [
-                    Text(
-                      '선호하는 음식을 3개 이상 선택해 주세요',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    const Text(
+                      '선호하는 음식을 선택해 주세요',
+                      style: TextStyle(fontSize: 16, color: Color(0xFF2F2F2F), fontWeight: FontWeight.bold),
                     ),
-                    SizedBox(height: 5),
-                    Text(
-                        '선호에 맞는 음식을 추천해드려요',
+                    const SizedBox(height: 5),
+                    const Text(
+                        '푸렌즈가 선호에 맞는 음식을 추천해 드려요!',
                         style: TextStyle(fontSize: 12)),
-                    SizedBox(height: 50),
+                    const SizedBox(height: 50),
                     Text(
                       '(${currentIndex + 1}/${foodList.length})',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                     ),
-                    SizedBox(height: 5),
+                    const SizedBox(height: 5),
                     Text(
-                      foodList[currentIndex], // 현재 음식 표시
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                      currentFood, // 현재 음식 표시
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                     ),
-                    SizedBox(height: 10),
+                    const SizedBox(height: 10),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(16),
                       child: Image.asset(
@@ -192,7 +206,7 @@ class _FoodScreenState extends State<FoodScreen> {
             //Spacer(),
             // 버튼 영역은 Expanded 밖으로 배치되어 항상 화면 하단에 고정됩니다.
             Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   ElevatedButton.icon(
                     onPressed: () => selectFood(true),
@@ -201,6 +215,7 @@ class _FoodScreenState extends State<FoodScreen> {
                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),),
                     style: getButtonStyle(0),
                   ),
+                  SizedBox(width: 100),
                   ElevatedButton.icon(
                     onPressed: () => selectFood(false), // 비선호 버튼
                     icon: Icon(Icons.thumb_down, color: selectedButtonIndex == 1 ? Color(0xFFFBFBFB) : Color(0xFF2F2F2F)),

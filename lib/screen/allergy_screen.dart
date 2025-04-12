@@ -1,41 +1,42 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'chat_screen.dart';
+import 'allergy_provider.dart';
+import 'food_provider.dart';
+import 'food_screen.dart';
 
 class AllergyScreen extends StatefulWidget {
-  final List<String> selectedFoods;
+  final bool fromInformationScreen;
 
-  AllergyScreen({required this.selectedFoods});
+  const AllergyScreen({super.key, this.fromInformationScreen = false});
 
   @override
   State<AllergyScreen> createState() => _AllergyScreenState();
 }
 
 class _AllergyScreenState extends State<AllergyScreen> {
-  List<String> allergies = [];
   bool showResult = false;
 
-  void toggleAllergy(String allergy) {
-    setState(() {
-      if (allergies.contains(allergy)) {
-        allergies.remove(allergy);
-      } else {
-        allergies.add(allergy);
-      }
+  void goToChat(List<String> allergies) {
+    Future.delayed(const Duration(seconds: 2), () {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatScreen(
+            selectedFoods: const [],
+            allergies: allergies,
+          ),
+        ),
+      );
     });
   }
-
-  /*void toggleAllergy(String allergy) {
-    setState(() {
-      if (allergies.contains(allergy)) {
-        allergies.remove(allergy);
-      } else {
-        allergies.add(allergy);
-      }
-    });
-  }*/
-
   @override
   Widget build(BuildContext context) {
+    final allergyProvider = Provider.of<AllergyProvider>(context);
+    final foodProvider = Provider.of<FoodProvider>(context);
+    final allergies = allergyProvider.allergies;
+    final selectedFoods = foodProvider.selectedFoods;
+
     if (showResult) {
       // 결과 화면을 표시
       return Scaffold(
@@ -53,6 +54,8 @@ class _AllergyScreenState extends State<AllergyScreen> {
                 ? Color(0xFFE0E0E0) // 스크롤 시 색상 변경
                 : Color(0xFFFBFBFB),*/ // 기본색
             title: Text('결과 화면', style: TextStyle(color: Color(0xFF2F2F2F))),
+            centerTitle: true,
+            automaticallyImplyLeading: false,
             flexibleSpace: Container(
               decoration: BoxDecoration(
                 color: Color(0xFFFBFBFB), // 배경색 설정
@@ -60,93 +63,87 @@ class _AllergyScreenState extends State<AllergyScreen> {
             ),
           ),
         ),
-        body: Padding(
+        body: Center(
+          child: Padding(
           padding: const EdgeInsets.all(20.0),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text('선호하는 음식:', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              Text(widget.selectedFoods.join(', ')),
-              SizedBox(height: 16),
-              Text('알레르기가 있는 음식:', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              Text(allergies.isNotEmpty ? allergies.join(', ') : '없음'),
-              Spacer(), // 남은 공간을 채워서 버튼을 하단에 배치
+              const Text('선호하는 음식', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 5),
+              Text(
+                selectedFoods.isNotEmpty ? selectedFoods.join(', ') : '없음',
+                style: const TextStyle(fontSize: 12),
+              ),
+              const SizedBox(height: 50),
+              const Text('알레르기 음식', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 5),
+              Text(
+                allergies.isNotEmpty ? allergies.join(', ') : '없음',
+                style: const TextStyle(fontSize: 12),
+              ),
+              const Spacer(),
+              if (!widget.fromInformationScreen)// 남은 공간을 채워서 버튼을 하단에 배치
               SizedBox(
-                width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
                     // ChatScreen으로 selectedFoods와 allergies를 전달
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => ChatScreen(
-                          selectedFoods: widget.selectedFoods, // 전달
-                          allergies: allergies, // 전달
+                        builder: (_) => ChatScreen(
+                          selectedFoods: const [],
+                          allergies: allergies,
                         ),
                       ),
                     );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Color(0xFFFF5833),
-                    padding: EdgeInsets.symmetric(vertical: 15),
+                    padding: EdgeInsets.symmetric(horizontal: 50, vertical: 16),
                   ),
-                  child: Text(
-                    '채팅하러 가기',
+                  child: const Text(
+                    '채팅 시작하기',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold,
                       color: Color(0xFFFBFBFB),
                     ),
                   ),
                 ),
-              ),
+              )
+            else
+                SizedBox(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      // ChatScreen으로 selectedFoods와 allergies를 전달
+                      Navigator.pop(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFFFF5833),
+                      padding: EdgeInsets.symmetric(horizontal: 50, vertical: 16),
+                    ),
+                    child: const Text(
+                      '저장',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold,
+                        color: Color(0xFFFBFBFB),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
+        ),
       );
     }
-/*class AllergyScreen extends StatefulWidget {
-  const AllergyScreen({super.key});
-
-  @override
-  State<AllergyScreen> createState() => _AllergyScreenState();
-}
-
-class _AllergyScreenState extends State<AllergyScreen> {
-  final List<String> items = [
-    'Item 1',
-    'Item 2',
-    'Item 3',
-    'Item 4',
-    'Item 5',
-  ]; // 선택 가능한 항목들
-  final Set<String> selectedItems = {};
-  final List<String> selectedAllergies = [];
-
-  // 알레르기 항목 리스트
-  final List<String> allergyItems = [
-    '고등어', '새우', '오징어', '게',
-    '조개류', '난류 (가금류)', '소고기', '우유',
-    '돼지고기', '땅콩', '닭고기', '호두',
-    '잣', '대두', '복숭아', '밀',
-    '아황산류', '토마토',
-  ];
-
-  // 항목 선택/해제
-  void toggleSelection(String item) {
-    setState(() {
-      if (selectedAllergies.contains(item)) {
-        selectedAllergies.remove(item); // 이미 선택된 항목은 제거
-      } else {
-        selectedAllergies.add(item); // 선택되지 않은 항목은 추가
-      }
-    });
-  }*/
 
   return Scaffold(
       appBar: AppBar(
         backgroundColor: Color(0xFFFBFBFB),
-        title: Text('식품 알레르기 체크', style: TextStyle(
+        title: Text('식품 알레르기', style: TextStyle(
             color: Color(0xFF2F2F2F)),
         ),
+        centerTitle: true,
+        automaticallyImplyLeading: false,
       ),
       body: Padding(
         padding: EdgeInsets.all(20),
@@ -154,7 +151,7 @@ class _AllergyScreenState extends State<AllergyScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              '알레르기가 있는 음식을 모두 선택해 주세요',
+              '알레르기 음식을 모두 선택해 주세요',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 5),
@@ -162,23 +159,6 @@ class _AllergyScreenState extends State<AllergyScreen> {
               '푸렌즈가 알레르기 음식을 기억할게요!',
               style: TextStyle(fontSize: 12),
             ),
-            /*Align(
-              alignment: Alignment.center,
-              child: RichText(
-                text: TextSpan(
-                  children: [
-                    TextSpan(
-                      text: '알레르기가 있는 음식을 모두 선택해 주세요\n',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF2F2F2F)), // 첫 번째 부분 색상 설정
-                    ),
-                    TextSpan(
-                      text: '푸렌즈가 알레르기 음식을 기억할게요!',
-                      style: TextStyle(fontSize: 12, color: Color(0xFF2F2F2F)), // 두 번째 부분 색상 설정
-                    ),
-                  ],
-                ),
-              ),
-            ),*/
             SizedBox(height: 50),
             // 알레르기 항목 버튼 리스트
             Expanded(
@@ -192,32 +172,31 @@ class _AllergyScreenState extends State<AllergyScreen> {
                     '돼지고기', '땅콩', '닭고기', '호두',
                     '잣', '대두', '복숭아', '밀',
                     '아황산류', '토마토',
-                  ].map((allergy) {
-                    final isSelected = allergies.contains(allergy);
-                    return GestureDetector(
-                      onTap: () => toggleAllergy(allergy),
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: allergies.contains(allergy)
-                              ? Color(0xFFFF5833)
-                              : Color(0xFFE0E0E0),
+                  ].map((item) {
+                    final isSelected = allergies.contains(item);
+                    return ElevatedButton(
+                      onPressed: () => allergyProvider.toggleAllergy(item),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isSelected
+                            ? const Color(0xFFFF5833)
+                            : const Color(0xFFE0E0E0),
+                        foregroundColor: isSelected
+                            ? const Color(0xFFFBFBFB)
+                            : const Color(0xFF323232),
+                        splashFactory: NoSplash.splashFactory, // 클릭 시 효과 제거
+                        shadowColor: Colors.transparent,
+                        animationDuration: Duration.zero, // 색상 변경 애니메이션 제거
+                        elevation: 0,
+                        //highlightColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(50),
                         ),
-                        child: Text(
-                          allergy,
-                          style: TextStyle(
-                            color: allergies.contains(allergy)
-                                ? Color(0xFFFBFBFB)
-                                : Color(0xFF2F2F2F),
-                            //color: isSelected ? Color(0xFFFBFBFB) : Color(0xFF323232),
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                      child: Text(
+                        item,
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                       ),
                     );
                   }).toList(),
@@ -232,22 +211,22 @@ class _AllergyScreenState extends State<AllergyScreen> {
             children: [
             ElevatedButton(
                   onPressed: () {
-                    Navigator.push(context,
-                      MaterialPageRoute(
-                        builder: (context) => ChatScreen(
-                          selectedFoods: widget.selectedFoods, // 전달
-                          allergies: allergies, // 전달
-                        ),
-                      ),
-                    );
+                    if (widget.fromInformationScreen) {
+                      Navigator.pop(context); // 바로 되돌아가기
+                    } else {
+                      setState(() {
+                        showResult = true;
+                      });
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Color(0xFFFF5833),
                     padding: EdgeInsets.symmetric(horizontal: 50, vertical: 16),
                   ),
                   child: Text(
-                    '완료',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFFBFBFB)),
+                    //'완료',
+                    widget.fromInformationScreen ? '저장' : '완료',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFFBFBFB)),
                   ),
                 ),
               ],

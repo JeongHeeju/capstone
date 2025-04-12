@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'information_screen.dart';
 
 class MypageScreen extends StatefulWidget {
   const MypageScreen({Key? key}) : super(key: key);
@@ -52,6 +53,7 @@ class _MypageScreenState extends State<MypageScreen> {
         child: AppBar(
           backgroundColor: const Color(0xFFFBFBFB),
           title: const Text('마이페이지', style: TextStyle(color: Color(0xFF2F2F2F))),
+          centerTitle: true,
           flexibleSpace: Container(
             decoration: BoxDecoration(
               color: Color(0xFFFBFBFB), // 배경색 설정
@@ -90,7 +92,11 @@ class _MypageScreenState extends State<MypageScreen> {
                             children: [
                               TextButton(
                                 onPressed: () {
-                                  Navigator.pop(context);
+                                  Navigator.push(context,
+                                    MaterialPageRoute(
+                                      builder: (context) => InformationScreen(),
+                                    ),
+                                  );
                                 },
                                 style: TextButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -149,7 +155,7 @@ class _MypageScreenState extends State<MypageScreen> {
           const SizedBox(height: 16),
           const Icon(Icons.account_circle, size: 50),
           const SizedBox(height: 8),
-          const Text('USER', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)), //회원가입할 때 설정한 사용자이름
+          const Text('USER', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)), //회원가입할 때 설정한 사용자이름
           const SizedBox(height: 20),
           /*const SizedBox(height: 20),
             const Icon(Icons.account_circle, size: 80),
@@ -172,7 +178,7 @@ class _MypageScreenState extends State<MypageScreen> {
                       '최근 본 레시피',
                       style: TextStyle(
                         color: selectedTab == 0 ? Color(0xFFFF5833) : Color(0xFFE0E0E0),
-                        fontSize: 16,
+                        fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -190,7 +196,7 @@ class _MypageScreenState extends State<MypageScreen> {
                       '저장한 레시피',
                       style: TextStyle(
                         color: selectedTab == 1 ? Color(0xFFFF5833) : Color(0xFFE0E0E0),
-                        fontSize: 16,
+                        fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -205,7 +211,7 @@ class _MypageScreenState extends State<MypageScreen> {
           // 레시피 리스트 (GridView)
           Expanded(
               child: GridView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 itemCount: currentList.length, // 선택된 리스트 사용
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,

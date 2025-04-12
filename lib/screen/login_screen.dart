@@ -4,9 +4,10 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class LoginScreen extends StatefulWidget {
-  final List<String> selectedFoods;
+  //const LoginScreen({super.key});
+  //final List<String> selectedFoods;
 
-  LoginScreen({required this.selectedFoods});
+  //LoginScreen({required this.selectedFoods});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -19,7 +20,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
 
   // 로그인 API 호출
-  Future<void> loginUser() async {
+  /*Future<void> loginUser() async {
     // 서버 URL
     final url = Uri.parse('http://127.0.0.1:8000/users/login/'); // 백엔드 주소
 
@@ -51,7 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
         SnackBar(content: Text('로그인 실패: $error')),
       );
     }
-  }
+  }*/
 
   // 비밀번호 보이기/숨기기 상태
   bool _isPasswordVisible = false;
@@ -59,71 +60,7 @@ class _LoginScreenState extends State<LoginScreen> {
   // 비밀번호 입력 필드 클릭 여부
   bool _isPasswordFieldTapped = false;
 
-  /*@override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Color(0xFFFBFBFB),
-        title: Text('로그인', style: TextStyle(color: Color(0xFF2F2F2F))),
-      ),
-      body: Padding(
-        padding: EdgeInsets.all(15),
-        child: Column(
-          children: [
-            // 아이디 입력 필드
-            TextField(
-              controller: _idController,
-              decoration: InputDecoration(
-                  labelText: '아이디 입력',
-              ),
-            ),
-            SizedBox(height: 50),
-            // 비밀번호 입력 필드
-            TextField(
-              controller: _passwordController,
-              obscureText: !_isPasswordVisible, // 비밀번호 보이기/숨기기 설정
-              decoration: InputDecoration(
-                labelText: '비밀번호 입력',
-                suffixIcon: _isPasswordFieldTapped
-                    ? IconButton(
-                  icon: Icon(
-                    _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                    color: Color(0xFF2F2F2F),
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _isPasswordVisible = !_isPasswordVisible; // 비밀번호 보이기/숨기기 토글
-                    });
-                  },
-                )
-                    : null, // 클릭 시 아이콘이 보이도록 설정
-              ),
-              onTap: () {
-                setState(() {
-                  _isPasswordFieldTapped = true; // 텍스트 필드 클릭 시 아이콘 보이기
-                });
-              },
-            ),
-            SizedBox(height: 100),
-            // 로그인 버튼
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pushNamed(context, '/survey');
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFFFF5833),
-                padding: EdgeInsets.symmetric(horizontal: 50, vertical: 16),
-              ),
-              child: Text(
-                '로그인',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFFBFBFB)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }*/
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -139,6 +76,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ? Color(0xFFE0E0E0) // 스크롤 시 색상 변경
                 : Color(0xFFFBFBFB),*/ // 기본색
           title: Text('로그인', style: TextStyle(color: Color(0xFF2F2F2F))),
+          centerTitle: true,
           flexibleSpace: Container(
             decoration: BoxDecoration(
               color: Color(0xFFFBFBFB), // 배경색 설정
@@ -207,10 +145,10 @@ class _LoginScreenState extends State<LoginScreen> {
             padding: const EdgeInsets.all(20),
             //padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: ElevatedButton(
-              /*onPressed: () {
+              onPressed: () {
                 Navigator.pushNamed(context, '/survey');
-              },*/
-              onPressed: loginUser,
+              },
+              //onPressed: loginUser,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Color(0xFFFF5833),
                 padding: EdgeInsets.symmetric(horizontal: 50, vertical: 16),
