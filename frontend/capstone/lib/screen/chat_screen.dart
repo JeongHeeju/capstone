@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'chatserve_screen.dart';
 
@@ -20,11 +21,17 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   bool _isMessageVisible = true;
+  bool _showNoDataMessage = false;
+  String imageUrl = '';
   TextEditingController _controller = TextEditingController();
   ScrollController _scrollController = ScrollController();
   List<Map<String, String>> messages = [];
-  String imageUrl = '';
-  bool isExpanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchChatHistory();
+  }
 
   void _scrollToBottom() {
     Future.delayed(Duration(milliseconds: 100), () {
@@ -32,6 +39,48 @@ class _ChatScreenState extends State<ChatScreen> {
         _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
       }
     });
+  }
+
+  Future<void> _fetchChatHistory({String? date}) async {
+    final uri = date != null
+        ? Uri.parse('http://127.0.0.1:8000/api/chat/history/?date=$date')
+        : Uri.parse('http://127.0.0.1:8000/api/chat/history/');
+
+    try {
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Token ${widget.userToken}',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final decodedBody = utf8.decode(response.bodyBytes);
+        final data = json.decode(decodedBody) as List;
+        setState(() {
+          messages = data.map<Map<String, String>>((item) {
+            return {
+              'sender': item['sender'],
+              'message': item['message'],
+            };
+          }).toList();
+          _showNoDataMessage = messages.isEmpty;
+        });
+
+        if (_showNoDataMessage) {
+          Future.delayed(Duration(seconds: 2), () {
+            if (mounted) setState(() => _showNoDataMessage = false);
+          });
+        }
+
+        _scrollToBottom();
+      } else {
+        print("채팅 내역 불러오기 실패: ${response.body}");
+      }
+    } catch (e) {
+      print("에러 발생: $e");
+    }
   }
 
   Future<void> sendMessage(String message) async {
@@ -50,21 +99,20 @@ class _ChatScreenState extends State<ChatScreen> {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        final decodedBody = utf8.decode(response.bodyBytes);
+        final data = jsonDecode(decodedBody);
         setState(() {
           messages.add({'sender': 'bot', 'message': data['response']});
           imageUrl = data['recipe_image_url'] ?? '';
         });
       } else {
         setState(() {
-          messages.add({'sender': 'bot', 'message': 'Error: ${response.statusCode}'});
-          imageUrl = '';
+          messages.add({'sender': 'bot', 'message': '오류: ${response.statusCode}'});
         });
       }
     } catch (e) {
       setState(() {
-        messages.add({'sender': 'bot', 'message': 'Error: $e'});
-        imageUrl = '';
+        messages.add({'sender': 'bot', 'message': '에러 발생: $e'});
       });
     }
 
@@ -81,12 +129,30 @@ class _ChatScreenState extends State<ChatScreen> {
     _scrollToBottom();
   }
 
+  void _showDrawerWithDateFilter(BuildContext context) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        opaque: false,
+        pageBuilder: (context, _, __) {
+          return ChatserveScreen(
+            onStartNewChat: startNewChat,
+            onDateSelected: (selectedDate) {
+              final formatted = selectedDate.toIso8601String().split("T")[0];
+              _fetchChatHistory(date: formatted);
+            },
+          );
+        },
+      ),
+    );
+  }
+
   void _showLeftDrawer(BuildContext context) {
     Navigator.push(
       context,
       PageRouteBuilder(
         opaque: false,
-        pageBuilder: (context, animation, secondaryAnimation) {
+        pageBuilder: (context, animation, _) {
           return Stack(
             children: [
               GestureDetector(
@@ -147,83 +213,28 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(isExpanded ? 250 : 105),
-        child: AppBar(
-          backgroundColor: Color(0xFFFBFBFB),
-          title: Text('푸렌즈', style: TextStyle(color: Color(0xFF2F2F2F))),
-          centerTitle: true,
-          elevation: 8.0,
-          leading: IconButton(
-            icon: Icon(Icons.account_circle, color: Color(0xFF2F2F2F)),
-            onPressed: () => _showLeftDrawer(context),
+      appBar: AppBar(
+        backgroundColor: Color(0xFFFBFBFB),
+        title: Text('푸렌즈', style: TextStyle(color: Color(0xFF2F2F2F))),
+        centerTitle: true,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.account_circle, color: Color(0xFF2F2F2F)),
+          onPressed: () => _showLeftDrawer(context),
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.menu, color: Color(0xFF2F2F2F)),
+            onPressed: () => _showDrawerWithDateFilter(context),
           ),
-          actions: [
-            Builder(
-              builder: (context) => Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: IconButton(
-                  icon: Icon(Icons.menu, color: Color(0xFF2F2F2F)),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      PageRouteBuilder(
-                        opaque: false,
-                        pageBuilder: (context, animation, secondaryAnimation) =>
-                            ChatserveScreen(onStartNewChat: startNewChat),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ],
-          flexibleSpace: Container(
-            decoration: BoxDecoration(color: Color(0xFFFBFBFB)),
-            child: Column(
-              children: [
-                Visibility(
-                  visible: !isExpanded,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 50.0),
-                    child: IconButton(
-                      icon: Icon(Icons.arrow_drop_down, size: 30, color: Color(0xFF2F2F2F)),
-                      onPressed: () => setState(() => isExpanded = true),
-                    ),
-                  ),
-                ),
-                if (isExpanded)
-                  Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
-                        child: Wrap(
-                          spacing: 10.0,
-                          runSpacing: 10.0,
-                          alignment: WrapAlignment.center,
-                          children: [
-                            ...widget.selectedFoods.map((food) => Chip(
-                                  label: Text(food),
-                                  backgroundColor: Color(0xFFFF5833),
-                                  labelStyle: TextStyle(color: Colors.white),
-                                )),
-                            ...widget.allergies.map((allergy) => Chip(
-                                  label: Text(allergy),
-                                  backgroundColor: Color(0xFFFF5833),
-                                  labelStyle: TextStyle(color: Colors.white),
-                                )),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.arrow_drop_up, size: 30, color: Color(0xFF2F2F2F)),
-                        onPressed: () => setState(() => isExpanded = false),
-                      ),
-                    ],
-                  ),
-              ],
-            ),
+        ],
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            color: Color(0XFFFBFBFB)
           ),
+        ),
+        systemOverlayStyle: SystemUiOverlayStyle.light.copyWith(
+          statusBarColor: Color(0xFFFBFBFB)
         ),
       ),
       body: Column(
@@ -237,14 +248,29 @@ class _ChatScreenState extends State<ChatScreen> {
                   text: TextSpan(
                     children: [
                       TextSpan(
-                          text: '오늘 뭐 먹을지, 고민일 때\n',
-                          style: TextStyle(fontSize: 20, color: Color(0xFF2F2F2F))),
+                        text: '오늘 뭐 먹을지, 고민일 때\n',
+                        style: TextStyle(fontSize: 20, color: Color(0xFF2F2F2F)),
+                      ),
                       TextSpan(
-                          text: '내 옆의 푸렌즈',
-                          style: TextStyle(
-                              fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF2F2F2F))),
+                        text: '내 옆의 푸렌즈',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2F2F2F),
+                        ),
+                      ),
                     ],
                   ),
+                ),
+              ),
+            ),
+          if (_showNoDataMessage)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Center(
+                child: Text(
+                  "대화기록이 없어요!",
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
                 ),
               ),
             ),
@@ -265,8 +291,10 @@ class _ChatScreenState extends State<ChatScreen> {
                         : Color(0xFF9F9F9F),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Text(messages[index]['message']!,
-                      style: TextStyle(color: Colors.white)),
+                  child: Text(
+                    messages[index]['message']!,
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ),
             ),
