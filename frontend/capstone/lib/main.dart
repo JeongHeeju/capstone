@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_projects/screen/allergy_screen.dart';
-import 'package:flutter_projects/screen/chatserve_screen.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
+
 import 'screen/start_screen.dart';
 import 'screen/login_screen.dart';
 import 'screen/signup_screen.dart';
@@ -8,10 +10,134 @@ import 'screen/success_screen.dart';
 import 'screen/survey_screen.dart';
 import 'screen/health_screen.dart';
 import 'screen/food_screen.dart';
+import 'screen/allergy_screen.dart';
 import 'screen/chat_screen.dart';
+import 'screen/chatserve_screen.dart';
 import 'screen/mypage_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'screen/information_screen.dart';
+import 'screen/food_select.dart';
+import 'screen/food_provider.dart';
+import 'screen/allergy_provider.dart';
 
+void main() {
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => FoodProvider()),
+        ChangeNotifierProvider(create: (_) => AllergyProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      locale: const Locale('ko', 'KR'),
+      supportedLocales: const [
+        Locale('en', 'US'),
+        Locale('ko', 'KR'),
+      ],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      theme: ThemeData(
+        scaffoldBackgroundColor: const Color(0xFFFBFBFB),
+        textTheme: const TextTheme(
+          bodyMedium: TextStyle(
+            color: Color(0xFF2F2F2F),
+          ),
+        ),
+        textSelectionTheme: const TextSelectionThemeData(
+          cursorColor: Color(0xFF2F2F2F),
+          selectionColor: Color(0xFFE0E0E0),
+          selectionHandleColor: Color(0xFFFF5833),
+        ),
+        inputDecorationTheme: const InputDecorationTheme(
+          labelStyle: TextStyle(color: Color(0xFF2F2F2F)),
+          focusedBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: Color(0xFF2F2F2F)),
+          ),
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFFFBFBFB),
+          foregroundColor: Color(0xFF2F2F2F),
+          elevation: 0,
+          titleTextStyle: TextStyle(
+            color: Color(0xFF2F2F2F),
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+          iconTheme: IconThemeData(color: Color(0xFF2F2F2F)),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Color(0xFFFF5833),
+            foregroundColor: Color(0xFFFBFBFB),
+            splashFactory: NoSplash.splashFactory,
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            foregroundColor: Color(0xFFE0E0E0),
+            backgroundColor: Colors.transparent,
+          ),
+        ),
+      ),
+      initialRoute: '/start',
+      routes: {
+        '/start': (context) => StartScreen(),
+        '/login': (context) => LoginScreen(),
+        '/signup': (context) => SignupScreen(),
+        '/success': (context) => SuccessScreen(),
+        '/survey': (context) => SurveyScreen(),
+        '/health': (context) => HealthScreen(),
+        '/food': (context) => FoodScreen(),
+        '/allergy': (context) => AllergyScreen(),
+        '/mypage': (context) => MypageScreen(),
+        '/info': (context) => InformationScreen(),
+        '/food_select': (context) => FoodSelectScreen(),
+        '/chatserve': (context) => ChatserveScreen(
+              onStartNewChat: () {
+                Navigator.pushNamed(context, '/chat');
+              },
+              onDateSelected: (selectedDate) {
+                print("선택된 날짜: $selectedDate");
+              },
+            ),
+      },
+      onGenerateRoute: (settings) {
+        if (settings.name == '/chat') {
+          return MaterialPageRoute(
+            builder: (context) => FutureBuilder(
+              future: SharedPreferences.getInstance(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.done &&
+                    snapshot.hasData) {
+                  final prefs = snapshot.data!;
+                  final userToken = prefs.getString('token') ?? '';
+                  return ChatScreen(userToken: userToken);
+                }
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              },
+            ),
+          );
+        }
+        return null;
+      },
+    );
+  }
+}
+
+/*
 void main() {
   runApp(const MyApp());
 }
@@ -195,3 +321,4 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 }
+*/
