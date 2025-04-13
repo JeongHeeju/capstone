@@ -2,178 +2,147 @@ import 'package:flutter/material.dart';
 
 class ChatserveScreen extends StatefulWidget {
   final VoidCallback onStartNewChat;
+  final Function(DateTime) onDateSelected;
 
-  ChatserveScreen({required this.onStartNewChat});
+  ChatserveScreen({required this.onStartNewChat, required this.onDateSelected});
 
   @override
   _ChatserveScreenState createState() => _ChatserveScreenState();
 }
 
 class _ChatserveScreenState extends State<ChatserveScreen> {
-  final List<String> menuItems = ['사진/동영상', '파일', '링크'];
-  final List<String> sideMenuItems = [
-    '오늘',
-    '3일 전',
-    '5일 전',
-    '7일 전',
-    '한 달 전',
-  ];
+  final List<String> sideMenuItems = ['오늘', '3일 전', '5일 전', '7일 전', '한 달 전'];
+  DateTime? selectedDate;
 
-  
+  DateTime _convertLabelToDate(String label) {
+    final now = DateTime.now();
+    switch (label) {
+      case '오늘':
+        return now;
+      case '3일 전':
+        return now.subtract(Duration(days: 3));
+      case '5일 전':
+        return now.subtract(Duration(days: 5));
+      case '7일 전':
+        return now.subtract(Duration(days: 7));
+      case '한 달 전':
+        return now.subtract(Duration(days: 30));
+      default:
+        return now;
+    }
+  }
 
-
-@override
+  @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // 반투명한 배경
         GestureDetector(
-          onTap: () {
-            Navigator.pop(context); // 배경 클릭 시 드로어 닫기
-          },
-          child: Container(
-            color: Color(0xFF2F2F2F).withOpacity(0.5), // 반투명 배경
-          ),
+          onTap: () => Navigator.pop(context),
+          child: Container(color: Colors.black.withOpacity(0.5)),
         ),
-        // 오른쪽 드로어
         Align(
           alignment: Alignment.centerRight,
           child: Material(
-            color: Color(0xFFFBFBFB), // 드로어 배경 색상
+            color: Color(0xFFFBFBFB),
             child: Container(
-              width: MediaQuery.of(context).size.width * 0.8, // 드로어 너비
+              width: MediaQuery.of(context).size.width * 0.8,
               height: double.infinity,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 상단 X 아이콘과 새 채팅 아이콘
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         IconButton(
-                          icon: Icon(Icons.close, color: Color(0xFF2F2F2F)),
-                          onPressed: () {
-                            Navigator.pop(context); // X 아이콘 클릭 시 드로어 닫기
-                          },
+                          icon: Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
                         ),
                         IconButton(
-                          icon: Icon(Icons.border_color, color: Color(0xFF2F2F2F)), // 새 채팅 아이콘
+                          icon: Icon(Icons.border_color),
                           onPressed: () {
-                            widget.onStartNewChat(); // 새 채팅 시작
-                            Navigator.pop(context); // 드로어 닫기
+                            widget.onStartNewChat();
+                            Navigator.pop(context);
                           },
                         ),
                       ],
                     ),
                   ),
-                  // 검색창 추가
                   SizedBox(height: 16),
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Container(
-                      //padding: EdgeInsets.symmetric(horizontal: 8.0),
                       decoration: BoxDecoration(
-                        color: Color(0xFFE0E0E0), // 검색창 배경 색상
-                        borderRadius: BorderRadius.circular(50.0), // 둥근 테두리
+                        color: Color(0xFFE0E0E0),
+                        borderRadius: BorderRadius.circular(50.0),
                       ),
                       child: Row(
                         children: [
-                        Padding(
-                        padding: const EdgeInsets.fromLTRB(16.0, 8.0, 8.0, 8.0), //왼쪽, 위, 오른쪽, 아래
-                        child: Icon(Icons.search, color: Color(0xFF2F2F2F)),
-                        ),// 돋보기 아이콘
-                          //SizedBox(width: 8.0), // 간격
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16.0, 8.0, 8.0, 8.0),
+                            child: Icon(Icons.search),
+                          ),
                           Expanded(
                             child: TextField(
                               decoration: InputDecoration(
-                                hintText: '검색어를 입력하세요', // 힌트 텍스트
-                                hintStyle: TextStyle(color: Color(0xFF9F9F9F)), // 힌트 텍스트 스타일
-                                border: InputBorder.none, // 외곽선 제거
-                                enabledBorder: InputBorder.none, // 활성 상태 외곽선 제거
-                                focusedBorder: InputBorder.none, // 포커스 상태 외곽선 제거
+                                hintText: '검색어를 입력하세요',
+                                border: InputBorder.none,
                               ),
-                              cursorColor: Color(0xFF2F2F2F), // 커서 색상 설정
                               onChanged: (value) {
-                                // 검색 동작 (필요 시 구현)
                                 print('검색어 입력: $value');
                               },
                             ),
                           ),
-                        /*Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Icon(Icons.calendar_today, color: Color(0xFF2F2F2F)),
-                        ),*//// 캘린더 아이콘
-                          Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: IconButton(
-                              icon: Icon(Icons.calendar_today, color: Color(0xFF2F2F2F)),
-                              onPressed: () async {
-                                DateTime? selectedDate = await showDatePicker(
-                                  context: context,
-                                  initialDate: DateTime.now(), // 기본 날짜 (현재 날짜)
-                                  firstDate: DateTime(2000),  // 선택 가능한 첫 번째 날짜
-                                  lastDate: DateTime.now(),   // 선택 가능한 마지막 날짜 (오늘까지 제한)
-                                    initialEntryMode: DatePickerEntryMode.calendarOnly, // 캘린더 모드로 강제 설정
-                                  locale: const Locale('ko', 'KR'), // 한국어 설정
-                                  builder: (BuildContext context, Widget? child) {
-                                    if (child == null) return SizedBox.shrink(); // null 확인
-                                    return Theme(
-                                      data: ThemeData.light().copyWith(
-                                        // 헤더 색상 (타이틀 배경)
-                                        colorScheme: ColorScheme.light(
-                                          primary: Color(0xFFFF5833), // 헤더 배경 및 강조 색상
-                                          onPrimary: Color(0xFFFFFFFF), // 헤더 텍스트 색상
-                                          surface: Color(0xFFFBFBFB), // 캘린더 배경색
-                                          onSurface: Color(0xFF2F2F2F), // 캘린더 텍스트 색상
-                                        ),
-                                        textButtonTheme: TextButtonThemeData(
-                                          style: TextButton.styleFrom(
-                                            foregroundColor: Color(0xFF2F2F2F), // 버튼 텍스트 색상 (확인/취소 버튼)
-                                          ),
-                                        ),
-                                        // 날짜 셀 스타일
-                                        dialogBackgroundColor: Color(0xFFFBFBFB), // 다이얼로그 배경색
-                                        textTheme: TextTheme(
-                                          bodyLarge: TextStyle(color: Color(0xFF2F2F2F)), // 기본 텍스트 색상
-                                          labelLarge: TextStyle(color: Color(0xFF2F2F2F)), // 날짜 텍스트 색상
-                                        ),
-                                        datePickerTheme: DatePickerThemeData(
-                                          headerBackgroundColor: Color(0xFFFBFBFB), // 헤더 배경색
-                                          headerForegroundColor: Color(0xFF2F2F2F), // 헤더 텍스트 색상
-                                          backgroundColor: Color(0xFFFBFBFB), // 캘린더 배경색
-                                          dayStyle: TextStyle(color: Color(0xFF2F2F2F)), // 날짜 텍스트 색상
+                          IconButton(
+                            icon: Icon(Icons.calendar_today, color: Color(0xFF2F2F2F)),
+                            onPressed: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: DateTime.now(),
+                                firstDate: DateTime(2000),
+                                lastDate: DateTime.now(),
+                                builder: (BuildContext context, Widget? child){
+                                  return Theme(
+                                    data: ThemeData.light().copyWith(
+                                      colorScheme: ColorScheme.light(
+                                        primary: Color(0xFFFF5833),
+                                        onPrimary: Colors.white,
+                                        surface: Color(0xFFFBFBFB),
+                                        onSurface: Color(0xFF2F2F2F),
+                                      ),
+                                      textButtonTheme: TextButtonThemeData(
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: Color(0xFF2F2F2F),
                                         ),
                                       ),
-                                      child: child,
-                                    );
-                                  },
-                                );
-                                if (selectedDate != null) {
-                                  // 사용자가 날짜를 선택한 경우
-                                  print("선택된 날짜: $selectedDate");
-                                  // 선택된 날짜 처리 (추가 동작 가능)
-                                } else {
-                                  // 사용자가 캘린더를 닫은 경우
-                                  print("날짜 선택 취소됨");
-                                }
-                              },
-                            ),
+                                      dialogBackgroundColor: Color(0xFFFBFBFB),
+                                      textTheme: TextTheme(
+                                        bodyLarge: TextStyle(color: Color(0xFF2F2F2F)),
+                                        labelLarge: TextStyle(color: Color(0xFF2F2F2F)),
+                                      ),
+                                    ),
+                                    child: child!,
+                                  );
+                                },
+                              );
+                              if (picked != null) {
+                                widget.onDateSelected(picked);
+                                Navigator.pop(context);
+                              }
+                            },
                           ),
                         ],
                       ),
                     ),
                   ),
-
-                
                   SizedBox(height: 16),
-                  //Divider(color: Color(0xFF9F9F9F)),
-                  ...sideMenuItems.map((item) {
+                  ...sideMenuItems.map((label) {
                     return ListTile(
-                      title: Text(item),
+                      title: Text(label),
                       onTap: () {
-                        Navigator.pop(context); // 메뉴 닫기
+                        final date = _convertLabelToDate(label);
+                        widget.onDateSelected(date);
+                        Navigator.pop(context);
                       },
                     );
                   }).toList(),
@@ -185,7 +154,4 @@ class _ChatserveScreenState extends State<ChatserveScreen> {
       ],
     );
   }
-
-  
-   
 }
