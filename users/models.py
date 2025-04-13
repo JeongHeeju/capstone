@@ -47,17 +47,24 @@ class UserProfile(models.Model):
     def __str__(self):
         return self.user_id.username
 
-
 class FoodPreference(models.Model):
     user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='food_preferences')
     food_name = models.CharField(max_length=100)
     is_liked = models.BooleanField()
-    tags = models.JSONField(default=list)  # 태그 저장용 필드 추가
+    tags = models.JSONField(default=list)  
 
     def __str__(self):
         return f"{self.user.user_id.username} - {self.food_name} - {'Liked' if self.is_liked else 'Disliked'}"
 
+"""
+class FoodPreference(models.Model):
+    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='food_preferences')
+    food_name = models.CharField(max_length=100)  # 음식 이름
+    is_liked = models.BooleanField()  # 선호 여부
 
+    def __str__(self):
+        return f"{self.user.user_id.username} - {self.food_name} - {'Liked' if self.is_liked else 'Disliked'}"
+"""
 
 class Allergy(models.Model):
     user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='allergies')
