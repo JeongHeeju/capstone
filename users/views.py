@@ -5,7 +5,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from .models import User, UserProfile, UserSurveyRecord
+from .models import User, UserProfile, UserSurveyRecord, Allergy, FoodPreference
 from .serializers import (
     UserSerializer, UserLoginSerializer, UserProfileSerializer,
     FoodPreferenceSerializer, AllergySerializer, PersonalInfoSerializer
@@ -13,7 +13,7 @@ from .serializers import (
 from django.contrib.auth.hashers import make_password
 from django.http import JsonResponse
 from rest_framework.authtoken.models import Token
-
+from users.models import UserProfile
 
 @api_view(['POST'])
 def signup(request):
@@ -42,14 +42,12 @@ def login_view(request):
     return Response({'error': 'Invalid credentials'}, status=400)
     print('로그인된 user:',user,type(user))
 
-
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def profile_exists(request):
   user = request.user
   exists = UserProfile.objects.filter(user_id=user). exists()
   return Response({'exists': exists})
-
 
 # 설문조사 저장 부분
 @api_view(['POST'])
@@ -68,7 +66,21 @@ def save_personal_info(request):
     else:
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def save_food_preferences(request):
+    data = request.data
+    user_profile = UserProfile.objects.get(user_id=request.user)
+    FoodPreference.objects.filter(user=user_profile).delete()
+    for item in data:
+        serializer = FoodPreferenceSerializer(data=item)
+        if serializer.is_valid():
+            serializer.save(user=user_profile)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    return Response({'message': 'Food preferences saved successfully'}, status=status.HTTP_201_CREATED)
 
+"""
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def save_food_preferences(request):
@@ -81,14 +93,14 @@ def save_food_preferences(request):
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     return Response({'message': 'Food preferences saved successfully'}, status=status.HTTP_201_CREATED)
-
-
+"""
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def save_allergy_info(request):
     data = request.data
-    user_profile = UserProfile.objects.get(user_id=request.user)  # 사용자 프로필 가져오기
+    user_profile = UserProfile.objects.get(user_id=request.user)  
+    Allergy.objects.filter(user=user_profile).delete()
     for item in data:
         serializer = AllergySerializer(data=item)
         if serializer.is_valid():
@@ -106,3 +118,5 @@ def save_all_in_one(request):
         serializer.save()
         return Response({'message': 'All data saved'}, status=201)
     return Response(serializer.errors, status=400)
+
+
