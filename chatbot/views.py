@@ -9,6 +9,20 @@ from django.shortcuts import get_object_or_404
 from rest_framework.permissions import AllowAny
 from users.models import UserProfile, FoodPreference, Allergy
 
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from .models import ChatHistory
+from django.http import JsonResponse
+from django.utils.dateparse import parse_date
+from datetime import datetime, timedelta
+from django.utils.timezone import make_aware
+
+
+
+
+
+
 # 음식별 태그 매핑
 FOOD_TAGS = {
     "불고기": ["양념고기", "익힌고기", "소고기", "달짝지근한 맛"],
@@ -114,6 +128,11 @@ class ChatAPIView(APIView):
                     logger.error(f"GPT invocation error: {e}")
                     bot_text = "Error generating response. Please try again later."
                 final_answer = f"푸렌즈가 알려드릴게요! {bot_text}"
+                ChatHistory.objects.create(
+                  user_id=request.user.user_id,
+                  message=user_message,
+                  response=final_answer
+              )
                 set_last_food_state(request.session, True)
             else:
                 final_answer = "푸렌즈는 음식 관련 질문에만 답변할 수 있어요!"
@@ -154,3 +173,32 @@ class ChatAPIView(APIView):
                 if re.search(r"(추천|뭐\s*먹|뭘\s*먹|메뉴|맛집|레시피|요리|식사|배달)", user_lower):
                     return "yes"
         return gpt_decision
+  
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_chat_history(request):
+    user_id = request.user.user_id
+    date_str = request.GET.get("date", None)
+
+    # 기본 쿼리셋: 로그인한 사용자의 채팅 내역 전체
+    chats = ChatHistory.objects.filter(user_id=user_id)
+
+    # 날짜가 주어졌다면 해당 날짜로 필터링
+    if date_str:
+        try:
+            date_obj = parse_date(date_str)
+            start = make_aware(datetime.combine(date_obj, datetime.min.time()))
+            end = make_aware(datetime.combine(date_obj + timedelta(days=1), datetime.min.time()))
+            chats = chats.filter(timestamp__range=(start, end))
+        except Exception as e:
+            return Response({'error': f'날짜 파싱 오류: {e}'}, status=400)
+
+    chats = chats.order_by('timestamp')
+    data = []
+    for chat in chats:
+        data.append({"sender": "user", "message": chat.message})
+        data.append({"sender": "bot", "message": chat.response})
+
+    return JsonResponse(data, safe=False, json_dumps_params={'ensure_ascii': False})
+
+
