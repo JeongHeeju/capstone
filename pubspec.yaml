@@ -36,6 +36,8 @@ dependencies:
   google_fonts: ^6.2.1  # google_fonts 패키지 버전 업데이트
   cupertino_icons: ^1.0.8
   provider: ^6.1.1
+  http: 1.2.2
+  shared_preferences: ^2.2.1
 
 dev_dependencies:
   flutter_test:

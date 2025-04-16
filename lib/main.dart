@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_projects/screen/allergy_provider.dart';
 import 'package:flutter_projects/screen/food_provider.dart';
+import 'package:flutter_projects/screen/signup_provider.dart';
 import 'screen/start_screen.dart';
 import 'screen/login_screen.dart';
 import 'screen/signup_screen.dart';
@@ -18,6 +19,7 @@ void main() {
     providers: [
       ChangeNotifierProvider(create: (_) => AllergyProvider()),
       ChangeNotifierProvider(create: (_) => FoodProvider()), // ← 여기!
+      ChangeNotifierProvider(create: (_) => SignupProvider()),
     ],
     child: MyApp(),
   ),);

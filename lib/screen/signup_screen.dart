@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+/*import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -352,140 +352,244 @@ class _SignupScreenState extends State<SignupScreen> {
       ),
     );
   }
-}
+}*/
 
-/*import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_projects/screen/signup_provider.dart';
+import 'package:provider/provider.dart';
 
 class SignupScreen extends StatefulWidget {
-  const SignupScreen({super.key});
+  final bool fromInformationScreen;
+
+  const SignupScreen({super.key, this.fromInformationScreen = false});
 
   @override
   State<SignupScreen> createState() => _SignupScreenState();
 }
 
 class _SignupScreenState extends State<SignupScreen> {
-  // 텍스트 필드 컨트롤러
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
 
-  // 비밀번호 보이기/숨기기 상태
+  late TextEditingController _nameController;
+  late TextEditingController _idController;
+  late TextEditingController _passwordController;
+  late TextEditingController _confirmPasswordController;
+
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
-
-  // 비밀번호 입력 필드 클릭 여부
   bool _isPasswordFieldTapped = false;
   bool _isConfirmPasswordFieldTapped = false;
 
   @override
+  void initState() {
+    final signupProvider = Provider.of<SignupProvider>(context, listen: false);
+    _nameController = TextEditingController(text: signupProvider.name);
+    _idController = TextEditingController(text: signupProvider.id);
+    _passwordController = TextEditingController(text: signupProvider.password);
+    _confirmPasswordController = TextEditingController(text: signupProvider.confirmPassword);
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _nameController.dispose();
+    _idController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final signupProvider = Provider.of<SignupProvider>(context);
+
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Color(0xFFFBFBFB),
-        title: Text(
-          '회원가입',
-          style: TextStyle(color: Color(0xFF2F2F2F)),
-        ),
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: EdgeInsets.all(15),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 비밀번호 입력
-              TextField(
-                controller: _passwordController,
-                obscureText: !_isPasswordVisible, // 비밀번호 숨기기/보이기
-                decoration: InputDecoration(
-                  labelText: '비밀번호 입력',
-                  hintText: '영문 6자리 이상 입력해주세요', // 초기 메시지
-                  hintStyle: TextStyle(color: Color(0xFFE0E0E0)), // hintText 색상 변경
-                  focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFF2F2F2F)), // 포커스 시 밑줄 색상
-                  ),
-                  enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFF2F2F2F)), // 기본 상태 밑줄 색상
-                  ),
-                  suffixIcon: _isPasswordFieldTapped
-                      ? IconButton(
-                    icon: Icon(
-                      _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                      color: Color(0xFF2F2F2F),
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _isPasswordVisible = !_isPasswordVisible; // 비밀번호 보이기/숨기기 토글
-                      });
-                    },
-                  )
-                      : null, // 클릭 시 아이콘이 보이도록 설정
-                ),
-                onTap: () {
-                  setState(() {
-                    _isPasswordFieldTapped = true; // 텍스트 필드 클릭 시 아이콘 보이기
-                  });
-                },
-              ),
-              SizedBox(height: 50),
-              // 비밀번호 확인 입력
-              TextField(
-                controller: _confirmPasswordController,
-                obscureText: !_isConfirmPasswordVisible, // 비밀번호 숨기기/보이기
-                decoration: InputDecoration(
-                  labelText: '비밀번호 확인',
-                  hintText: '영문 6자리 이상 입력해주세요', // 초기 메시지
-                  hintStyle: TextStyle(color: Color(0xFFE0E0E0)), // hintText 색상 변경
-                  focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFF2F2F2F)), // 포커스 시 밑줄 색상
-                  ),
-                  enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFF2F2F2F)), // 기본 상태 밑줄 색상
-                  ),
-                  suffixIcon: _isConfirmPasswordFieldTapped
-                      ? IconButton(
-                    icon: Icon(
-                      _isConfirmPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                      color: Color(0xFF2F2F2F),
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _isConfirmPasswordVisible =
-                        !_isConfirmPasswordVisible; // 비밀번호 확인 보이기/숨기기 토글
-                      });
-                    },
-                  )
-                      : null, // 클릭 시 아이콘이 보이도록 설정
-                ),
-                onTap: () {
-                  setState(() {
-                    _isConfirmPasswordFieldTapped = true; // 텍스트 필드 클릭 시 아이콘 보이기
-                  });
-                },
-              ),
-              SizedBox(height: 100),
-              // 회원가입 버튼 (가운데 정렬)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center, // 가운데 정렬
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      // 모든 입력 검증 후 성공적으로 회원가입 로직 처리
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFFFF5833),
-                      padding: EdgeInsets.symmetric(horizontal: 50, vertical: 16),
-                    ),
-                    child: Text(
-                      '회원가입',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFFBFBFB)),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(56.0),
+        child: AppBar(
+          automaticallyImplyLeading: !widget.fromInformationScreen, // ← 뒤로가기 여부 설정
+          backgroundColor: Color(0xFFFBFBFB),
+          title: Text(widget.fromInformationScreen ? '기본정보 변경' : '회원가입'),
+          centerTitle: true,
+          flexibleSpace: Container(
+            decoration: BoxDecoration(color: Color(0xFFFBFBFB)),
           ),
         ),
       ),
+
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 이름 입력
+                  TextField(
+                    controller: _nameController,
+                    onChanged: (val) {
+                      signupProvider.setName(val);
+                      signupProvider.validateName();
+                    },
+                    decoration: _buildInputDecoration(
+                      label: '사용자 이름 입력',
+                      hint: '3자리 이상 입력해주세요',
+                      error: signupProvider.nameError,
+                    ),
+                  ),
+                  SizedBox(height: 50),
+
+                  // 아이디 입력
+                  TextField(
+                    controller: _idController,
+                    onChanged: (val) {
+                      signupProvider.setId(val);
+                      signupProvider.validateId();
+                    },
+                    decoration: _buildInputDecoration(
+                      label: '아이디 입력',
+                      hint: '영문 6자리 이상 입력해주세요',
+                      error: signupProvider.idError,
+                    ),
+                  ),
+                  SizedBox(height: 50),
+
+                  // 비밀번호 입력
+                  TextField(
+                    controller: _passwordController,
+                    obscureText: !_isPasswordVisible,
+                    onChanged: (val) {
+                      signupProvider.setPassword(val);
+                      signupProvider.validatePassword();
+                    },
+                    onTap: () {
+                      setState(() {
+                        _isPasswordFieldTapped = true;
+                      });
+                    },
+                    decoration: _buildInputDecoration(
+                      label: '비밀번호 입력',
+                      hint: '영문 6자리 이상 입력해주세요',
+                      error: signupProvider.passwordError,
+                      iconButton: _isPasswordFieldTapped
+                          ? IconButton(
+                        icon: Icon(
+                          _isPasswordVisible
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                          color: Color(0xFF2F2F2F),
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _isPasswordVisible = !_isPasswordVisible;
+                          });
+                        },
+                      )
+                          : null,
+                    ),
+                  ),
+                  SizedBox(height: 50),
+
+                  // 비밀번호 확인 입력
+                  TextField(
+                    controller: _confirmPasswordController,
+                    obscureText: !_isConfirmPasswordVisible,
+                    onChanged: (val) {
+                      signupProvider.setConfirmPassword(val);
+                      signupProvider.validateConfirmPassword();
+                    },
+                    onTap: () {
+                      setState(() {
+                        _isConfirmPasswordFieldTapped = true;
+                      });
+                    },
+                    decoration: _buildInputDecoration(
+                      label: '비밀번호 확인',
+                      hint: '비밀번호를 다시 입력해주세요',
+                      error: signupProvider.confirmPasswordError,
+                      iconButton: _isConfirmPasswordFieldTapped
+                          ? IconButton(
+                        icon: Icon(
+                          _isConfirmPasswordVisible
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                          color: Color(0xFF2F2F2F),
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+                          });
+                        },
+                      )
+                          : null,
+                    ),
+                  ),
+                  SizedBox(height: 100),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: ElevatedButton(
+              onPressed: () async {
+                signupProvider.validateAll();
+                if (signupProvider.isValid) {
+                  await signupProvider.saveUser();
+                  if (widget.fromInformationScreen) {
+                    Navigator.pop(context);
+                  } else {
+                    Navigator.pushNamed(context, '/login');
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFFFF5833),
+                padding: EdgeInsets.symmetric(horizontal: 50, vertical: 16),
+              ),
+              child: Text(
+                widget.fromInformationScreen ? '저장' : '회원가입',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFFFBFBFB),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
-}*/
+
+  InputDecoration _buildInputDecoration({
+    required String label,
+    required String hint,
+    required String? error,
+    Widget? iconButton,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      hintStyle: TextStyle(color: Color(0xFFE0E0E0)),
+      errorText: error,
+      errorStyle: TextStyle(color: Color(0xFFFF5833)),
+      focusedBorder: UnderlineInputBorder(
+        borderSide: BorderSide(color: Color(0xFF2F2F2F)),
+      ),
+      enabledBorder: UnderlineInputBorder(
+        borderSide: BorderSide(color: Color(0xFF2F2F2F)),
+      ),
+      errorBorder: UnderlineInputBorder(
+        borderSide: BorderSide(color: Color(0xFFFF5833)),
+      ),
+      focusedErrorBorder: UnderlineInputBorder(
+        borderSide: BorderSide(color: Color(0xFFFF5833)),
+      ),
+      suffixIcon: iconButton,
+    );
+  }
+}

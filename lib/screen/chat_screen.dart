@@ -5,20 +5,6 @@ class ChatScreen extends StatefulWidget {
   final List<String> selectedFoods;
   final List<String> allergies;
 
-  /*@override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      theme: ThemeData(
-        // AppBar 스타일 추가
-        appBarTheme: AppBarTheme(
-          backgroundColor: Color(0xFFFBFBFB), // AppBar 배경색
-          foregroundColor: Color(0xFF2F2F2F), // 변경된 색상
-          elevation: 0, // 그림자 제거
-          ),
-        ),
-      );
-    }*/
-
   @override
   ChatScreen({required this.selectedFoods, required this.allergies});
 
@@ -33,30 +19,25 @@ class _ChatScreenState extends State<ChatScreen> {
   List<Map<String, String>> messages = []; // 메시지 목록 (사용자 및 모델)
   bool isExpanded = false; // 음식과 알레르기 목록이 펼쳐졌는지 확인하는 변수
   final List<String> menuItems = ['사진/동영상', '파일', '링크'];
+  List<bool> chatBookmarks = [];
 
   void startNewChat() {
     setState(() {
       messages.clear(); // 메시지 초기화
       _isMessageVisible = true; // 첫 번째 메시지 다시 표시
-      //messages.add({'sender': 'bot', 'message': '새로운 채팅이 시작되었습니다.'}); // 초기 메시지
     });
     _scrollToBottom();
   }
-
-  /*@override
-  void initState() {
-    super.initState();
-    // 처음에 화면을 아래로 자동 스크롤
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollToBottom();
-    });
-  }*/
 
   // 메시지 전송 함수
   void sendMessage(String message) {
     setState(() {
       messages.add({'sender': 'user', 'message': message}); // 사용자 메시지 추가
       messages.add({'sender': 'bot', 'message': '응답: $message'}); // 모델 응답 (예시)
+      // 사용자 메시지는 북마크 없음
+      chatBookmarks.add(false);
+      // 봇 메시지는 북마크 기본값 false로 추가
+      chatBookmarks.add(false);
     });
     _controller.clear(); // 입력 필드 초기화
     _scrollToBottom();
@@ -158,39 +139,11 @@ class _ChatScreenState extends State<ChatScreen> {
         },
       ),
     );
-    /*showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Color(0xFFFBFBFB),
-          title: Text("프로필 메뉴",
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF2F2F2F)),
-          ),
-          content: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text("사진/동영상"),
-              Text("파일"),
-              Text("링크"),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text("닫기",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF2F2F2F)),
-              ),
-            ),
-          ],
-        );
-      },
-    );*/
   }
 
   @override
   Widget build(BuildContext context) {
+    
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(56.0), // 앱바 높이를 동적으로 설정
@@ -216,26 +169,6 @@ class _ChatScreenState extends State<ChatScreen> {
           centerTitle: true, // 타이틀을 가운데 정렬
           elevation: 8.0, // 그림자 효과 추가
           actions: [
-            /*IconButton(
-              icon: Icon(Icons.account_circle),
-              onPressed: () {
-                _showProfileMenu(context);
-              },
-            ),
-            Builder(
-              builder: (context) => IconButton(
-                //padding: const EdgeInsets.all(16.0),
-                icon: Icon(Icons.menu),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ChatserveScreen(),
-                    ),
-                  );
-                },
-              ),
-            ),*/
             Builder(
               builder: (context) => Padding(
                 padding: const EdgeInsets.all(8.0), // 원하는 패딩
@@ -262,70 +195,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         ),
       ),
-      /*body: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    // 채팅 UI (채팅 메시지 영역)
-                    Expanded(
-                      child: ListView.builder(
-                        reverse: true, // 최신 메시지가 맨 아래에 표시되도록 설정
-                        itemCount: messages.length,
-                        itemBuilder: (context, index) {
-                          return Align(
-                            alignment: messages[index]['sender'] == 'user'
-                                ? Alignment.centerRight
-                                : Alignment.centerLeft,
-                            child: Container(
-                              padding: EdgeInsets.all(10),
-                              margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-                              decoration: BoxDecoration(
-                                color: messages[index]['sender'] == 'user'
-                                    ? Color(0xFFFF5833) // 사용자 메시지 색상
-                                    : Color(0xFF9F9F9F), // 봇 메시지 색상
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                messages[index]['message']!,
-                                style: TextStyle(color: Color(0xFFFBFBFB)),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    // 입력창과 전송 버튼
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _controller,
-                              decoration: InputDecoration(
-                                hintText: '메시지를 입력하세요...',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                filled: true,
-                                fillColor: Color(0xFFE0E0E0),
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.send),
-                            onPressed: () {
-                              if (_controller.text.isNotEmpty) {
-                                sendMessage(_controller.text); // 메시지 전송
-                              }
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),*/
+
       body: Column(
         children: [
           // 첫 번째 메시지 표시 (활성화되면 사라지도록)
@@ -368,7 +238,6 @@ class _ChatScreenState extends State<ChatScreen> {
                       ? Alignment.centerRight
                       : Alignment.centerLeft,
                   child: Container(
-                    padding: EdgeInsets.all(10),
                     margin: EdgeInsets.symmetric(vertical: 5, horizontal: 24),
                     decoration: BoxDecoration(
                       color: messages[index]['sender'] == 'user'
@@ -376,34 +245,75 @@ class _ChatScreenState extends State<ChatScreen> {
                           : Color(0xFF9F9F9F), // 봇 메시지 색상
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Text(
-                      messages[index]['message']!,
-                      style: TextStyle(color: Color(0xFFFBFBFB)),
+                    child: ConstrainedBox( // 아이콘 오버레이를 위한 최소 크기 확보
+                      constraints: BoxConstraints(minWidth: 30),
+                      child: Stack(
+                          children: [
+                            // 메시지 텍스트
+                            Padding(
+                              padding: messages[index]['sender'] == 'user'
+                                  ? const EdgeInsets.all(10)
+                                  : const EdgeInsets.only(left: 10, top: 10, bottom: 10, right: 40),
+                              // 북마크 아이콘 공간 확보
+                              child: Text(
+                                messages[index]['message']!,
+                                style: TextStyle(color: Color(0xFFFBFBFB)),
+                              ),
+                            ),
+                            if (messages[index]['sender'] !=
+                                'user') // 봇 메시지에만 북마크 아이콘
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: IconButton(
+                                  //padding: EdgeInsets.zero,
+                                  //constraints: BoxConstraints(),
+                                  /*icon: Icon(
+                            chatBookmarks[index] ? Icons.bookmark : Icons.bookmark_border,
+                            color: chatBookmarks[index]
+                                ? const Color(0xFFFF5833)
+                                : const Color(0xFFE0E0E0),
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              chatBookmarks[index] = !chatBookmarks[index];
+                            });
+                          },*/
+                                  icon: Icon(
+                                    (index < chatBookmarks.length &&
+                                        chatBookmarks[index])
+                                        ? Icons.bookmark
+                                        : Icons.bookmark_border,
+                                    //size: 20,
+                                    color: chatBookmarks[index]
+                                        ? const Color(0xFFFF5833)
+                                        : const Color(0xFFE0E0E0),
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      if (index < chatBookmarks.length) {
+                                        chatBookmarks[index] =
+                                        !chatBookmarks[index];
+                                      }
+                                    });
+                                  },
+                                ),
+                              ),
+                          ]
+                      ),
                     ),
                   ),
                 );
               },
             ),
           ),
+
+
           // 입력창과 전송 버튼
           Padding(
             padding: const EdgeInsets.all(20.0),
             child: Row(
               children: [
-                /*Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      decoration: InputDecoration(
-                        hintText: '메시지를 입력하세요...',
-                        hintStyle: TextStyle(color: Color(0xFFE0E0E0)),
-                        border: OutlineInputBorder(
-                          //borderRadius: BorderRadius.circular(10),
-                        ),
-                        filled: true,
-                        fillColor: Color(0xFFFBFBFB),
-                      ),
-                    ),
-                  ),*/
                 Expanded(
                   child: TextField(
                     controller: _controller,

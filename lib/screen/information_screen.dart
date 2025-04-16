@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_projects/screen/signup_screen.dart';
 import 'package:provider/provider.dart';
 import 'allergy_provider.dart';
 import 'food_provider.dart';
@@ -60,6 +61,15 @@ class InformationScreen extends StatelessWidget {
             ),*/
             title: Text(item),
             onTap: () {
+              if (item == '기본정보 변경') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const SignupScreen(fromInformationScreen: true),
+                  ),
+                );
+              }
+
               if (item == '음식 선호도') {
                 Navigator.push(
                   context,
