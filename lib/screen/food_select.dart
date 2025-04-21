@@ -3,9 +3,14 @@ import 'package:provider/provider.dart';
 import '../provider/food_provider.dart';
 import 'food_provider.dart';
 
-class FoodSelectScreen extends StatelessWidget {
+class FoodSelectScreen extends StatefulWidget {
   const FoodSelectScreen({super.key});
 
+  @override
+  State<FoodSelectScreen> createState() => _FoodSelectScreenState();
+}
+
+class _FoodSelectScreenState extends State<FoodSelectScreen> {
   final List<Map<String, String>> foodItems = const [
     {'name': '김치찌개', 'image': 'assets/food1.png'},
     {'name': '비빔밥', 'image': 'assets/food2.png'},
@@ -18,6 +23,32 @@ class FoodSelectScreen extends StatelessWidget {
     {'name': '샐러드', 'image': 'assets/food9.png'},
     {'name': '케이크', 'image': 'assets/food10.png'},
   ];
+
+  late List<String> _tempSelectedFoods;
+
+  @override
+  void initState() {
+    super.initState();
+    final foodProvider = Provider.of<FoodProvider>(context, listen: false);
+    _tempSelectedFoods = List.from(foodProvider.selectedFoods);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ModalRoute.of(context)?.addScopedWillPopCallback(_onWillPop);
+    });
+  }
+
+  Future<bool> _onWillPop() async {
+    final foodProvider = Provider.of<FoodProvider>(context, listen: false);
+    foodProvider.setSelectedFoods(_tempSelectedFoods);
+    return true;
+  }
+
+  @override
+  void dispose() {
+    ModalRoute.of(context)?.removeScopedWillPopCallback(_onWillPop);
+    super.dispose();
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +64,7 @@ class FoodSelectScreen extends StatelessWidget {
                 : Color(0xFFFBFBFB),*/ // 기본색
           title: Text('음식 선호도', style: TextStyle(color: Color(0xFF2F2F2F))),
           centerTitle: true,
-          automaticallyImplyLeading: false,
+          //automaticallyImplyLeading: false,
           flexibleSpace: Container(
             decoration: BoxDecoration(
               color: Color(0xFFFBFBFB), // 배경색 설정

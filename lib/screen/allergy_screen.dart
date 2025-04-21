@@ -16,6 +16,30 @@ class AllergyScreen extends StatefulWidget {
 
 class _AllergyScreenState extends State<AllergyScreen> {
   bool showResult = false;
+  late List<String> _tempAllergies;
+
+  @override
+  void initState() {
+    super.initState();
+    final allergyProvider = Provider.of<AllergyProvider>(context, listen: false);
+    _tempAllergies = List.from(allergyProvider.allergies);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ModalRoute.of(context)?.addScopedWillPopCallback(_onWillPop);
+    });
+  }
+
+  Future<bool> _onWillPop() async {
+    final allergyProvider = Provider.of<AllergyProvider>(context, listen: false);
+    allergyProvider.setAllergies(_tempAllergies);
+    return true;
+  }
+
+  @override
+  void dispose() {
+    ModalRoute.of(context)?.removeScopedWillPopCallback(_onWillPop);
+    super.dispose();
+  }
 
   void goToChat(List<String> allergies) {
     Future.delayed(const Duration(seconds: 2), () {
@@ -143,7 +167,8 @@ class _AllergyScreenState extends State<AllergyScreen> {
             color: Color(0xFF2F2F2F)),
         ),
         centerTitle: true,
-        automaticallyImplyLeading: false,
+        automaticallyImplyLeading: widget.fromInformationScreen,
+        //automaticallyImplyLeading: false,
       ),
       body: Padding(
         padding: EdgeInsets.all(20),

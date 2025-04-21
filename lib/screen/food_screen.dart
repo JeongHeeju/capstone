@@ -206,25 +206,25 @@ class _FoodScreenState extends State<FoodScreen> {
             //Spacer(),
             // 버튼 영역은 Expanded 밖으로 배치되어 항상 화면 하단에 고정됩니다.
             Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: () => selectFood(true),
-                    icon: Icon(Icons.thumb_up, color: selectedButtonIndex == 0 ? Color(0xFFFBFBFB) : Color(0xFF2F2F2F)),
-                    label: Text('선호',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),),
-                    style: getButtonStyle(0),
-                  ),
-                  SizedBox(width: 100),
-                  ElevatedButton.icon(
-                    onPressed: () => selectFood(false), // 비선호 버튼
-                    icon: Icon(Icons.thumb_down, color: selectedButtonIndex == 1 ? Color(0xFFFBFBFB) : Color(0xFF2F2F2F)),
-                    label: Text('비선호',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),),
-                    style: getButtonStyle(1),
-                  ),
-                ],
-              ),
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () => selectFood(true),
+                  icon: Icon(Icons.thumb_up, color: selectedButtonIndex == 0 ? Color(0xFFFBFBFB) : Color(0xFF2F2F2F)),
+                  label: Text('선호',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),),
+                  style: getButtonStyle(0),
+                ),
+                SizedBox(width: 100),
+                ElevatedButton.icon(
+                  onPressed: () => selectFood(false), // 비선호 버튼
+                  icon: Icon(Icons.thumb_down, color: selectedButtonIndex == 1 ? Color(0xFFFBFBFB) : Color(0xFF2F2F2F)),
+                  label: Text('비선호',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),),
+                  style: getButtonStyle(1),
+                ),
+              ],
+            ),
           ],
         ),
       ),

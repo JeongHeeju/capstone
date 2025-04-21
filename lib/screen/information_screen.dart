@@ -5,6 +5,7 @@ import 'allergy_provider.dart';
 import 'food_provider.dart';
 import 'food_select.dart';
 import 'allergy_screen.dart';
+import 'health_screen.dart';
 import 'provider/food_provider.dart';
 import 'provider/allergy_provider.dart';
 
@@ -29,8 +30,8 @@ class InformationScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: const Color(0xFFFBFBFB),
         title: const Text('회원정보', style: TextStyle(color: Color(0xFF2F2F2F))),
-        centerTitle: true,
         foregroundColor: Color(0xFF2F2F2F),
+        centerTitle: true,
       ),
       body: ListView.builder(
         itemCount: informationItems.length,
@@ -66,6 +67,15 @@ class InformationScreen extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (_) => const SignupScreen(fromInformationScreen: true),
+                  ),
+                );
+              }
+
+              if (item == '기본 설문') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const HealthScreen(fromInformationScreen: true),
                   ),
                 );
               }

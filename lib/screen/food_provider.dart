@@ -18,4 +18,11 @@ class FoodProvider extends ChangeNotifier {
     _selectedFoods.clear();
     notifyListeners();
   }
+
+  void setSelectedFoods(List<String> foods) {
+    _selectedFoods
+      ..clear()
+      ..addAll(foods);
+    notifyListeners();
+  }
 }

@@ -375,6 +375,11 @@ class _SignupScreenState extends State<SignupScreen> {
   late TextEditingController _passwordController;
   late TextEditingController _confirmPasswordController;
 
+  late String _initialName;
+  late String _initialId;
+  late String _initialPassword;
+  late String _initialConfirmPassword;
+
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
   bool _isPasswordFieldTapped = false;
@@ -382,16 +387,26 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   void initState() {
+    super.initState();
     final signupProvider = Provider.of<SignupProvider>(context, listen: false);
+    _initialName = signupProvider.name;
+    _initialId = signupProvider.id;
+    _initialPassword = signupProvider.password;
+    _initialConfirmPassword = signupProvider.confirmPassword;
+
     _nameController = TextEditingController(text: signupProvider.name);
     _idController = TextEditingController(text: signupProvider.id);
     _passwordController = TextEditingController(text: signupProvider.password);
     _confirmPasswordController = TextEditingController(text: signupProvider.confirmPassword);
-    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ModalRoute.of(context)?.addScopedWillPopCallback(_onWillPop);
+    });
   }
 
   @override
   void dispose() {
+    ModalRoute.of(context)?.removeScopedWillPopCallback(_onWillPop);
     _scrollController.dispose();
     _nameController.dispose();
     _idController.dispose();
@@ -399,6 +414,16 @@ class _SignupScreenState extends State<SignupScreen> {
     _confirmPasswordController.dispose();
     super.dispose();
   }
+
+  Future<bool> _onWillPop() async {
+    final signupProvider = Provider.of<SignupProvider>(context, listen: false);
+    signupProvider.setName(_initialName);
+    signupProvider.setId(_initialId);
+    signupProvider.setPassword(_initialPassword);
+    signupProvider.setConfirmPassword(_initialConfirmPassword);
+    return true;
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -408,10 +433,11 @@ class _SignupScreenState extends State<SignupScreen> {
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(56.0),
         child: AppBar(
-          automaticallyImplyLeading: !widget.fromInformationScreen, // ← 뒤로가기 여부 설정
+          //automaticallyImplyLeading: !widget.fromInformationScreen, // ← 뒤로가기 여부 설정
           backgroundColor: Color(0xFFFBFBFB),
           title: Text(widget.fromInformationScreen ? '기본정보 변경' : '회원가입'),
           centerTitle: true,
+          automaticallyImplyLeading: true,
           flexibleSpace: Container(
             decoration: BoxDecoration(color: Color(0xFFFBFBFB)),
           ),
@@ -527,7 +553,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           : null,
                     ),
                   ),
-                  SizedBox(height: 100),
+                  SizedBox(height: 50),
                 ],
               ),
             ),
@@ -536,11 +562,16 @@ class _SignupScreenState extends State<SignupScreen> {
             padding: const EdgeInsets.all(20),
             child: ElevatedButton(
               onPressed: () async {
+                signupProvider.setName(_nameController.text);
+                signupProvider.setId(_idController.text);
+                signupProvider.setPassword(_passwordController.text);
+                signupProvider.setConfirmPassword(_confirmPasswordController.text);
                 signupProvider.validateAll();
+
                 if (signupProvider.isValid) {
                   await signupProvider.saveUser();
                   if (widget.fromInformationScreen) {
-                    Navigator.pop(context);
+                    Navigator.pop(context, 'saved');
                   } else {
                     Navigator.pushNamed(context, '/login');
                   }
@@ -556,12 +587,12 @@ class _SignupScreenState extends State<SignupScreen> {
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFFFBFBFB),
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
     );
   }
 
