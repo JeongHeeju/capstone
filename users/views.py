@@ -1,3 +1,4 @@
+
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate
 from .forms import UserRegisterForm, UserLoginForm
@@ -120,3 +121,8 @@ def save_all_in_one(request):
     return Response(serializer.errors, status=400)
 
 
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_account(request):
+    request.user.delete()
+    return Response({'message': '회원탈퇴가 완료되었습니다.'}, status=status.HTTP_204_NO_CONTENT)
