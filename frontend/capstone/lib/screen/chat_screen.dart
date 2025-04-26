@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'chatserve_screen.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -26,11 +27,32 @@ class _ChatScreenState extends State<ChatScreen> {
   TextEditingController _controller = TextEditingController();
   ScrollController _scrollController = ScrollController();
   List<Map<String, String>> messages = [];
+  Set<String> bookmarkedRecipes = {};
+  Map<String, List<String>> groupedRecipes = {};
 
   @override
   void initState() {
     super.initState();
     _fetchChatHistory();
+    _loadBookmarkedRecipes();
+  }
+
+  Future<void> _loadBookmarkedRecipes() async {
+    final prefs = await SharedPreferences.getInstance();
+    final rawJson = prefs.getString('grouped_recipes') ?? '{}';
+    final Map<String, dynamic> decoded = json.decode(rawJson);
+    final Map<String, List<String>> grouped = decoded.map((key, value) => MapEntry(key, List<String>.from(value)));
+
+    setState(() {
+      groupedRecipes = grouped;
+      bookmarkedRecipes = grouped.values.expand((list) => list).toSet();
+      
+      for (var recipes in grouped.values){
+        for (var recipe in recipes){
+          messages.add({'sender': 'bot', 'message': recipe});
+        }
+      }
+    });
   }
 
   void _scrollToBottom() {
@@ -40,6 +62,58 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     });
   }
+
+  String extractMainDishAuto(String message) {
+    final trimmed = message.replaceAll('\n', ' ').replaceFirst('푸렌즈가', '').trim();
+    final regex = RegExp(r'([가-힣]+?)(?:을|를)?\s*(?:레시피|알려|추천|소개|만들)');
+    final match = regex.firstMatch(trimmed);
+    if (match != null && match.group(1)!.length > 1) return match.group(1)!;
+
+    final fallback = RegExp(r'([가-힣]+?)(?:을|를)?\s*레시피');
+    final fbMatch = fallback.firstMatch(trimmed);
+    if (fbMatch != null && fbMatch.group(1)!.length > 1) return fbMatch.group(1)!;
+
+    return '기타';
+  }
+
+  bool isRecipe(String message) {
+    return message.contains('레시피') || message.contains('만드는 법') ||
+        (message.contains('재료') && message.contains('조리'));
+  }
+
+  Future<void> addToRecentRecipes(String text) async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList('recent_recipes') ?? [];
+    if (!list.contains(text)) {
+      list.add(text);
+      await prefs.setStringList('recent_recipes', list);
+    }
+  }
+
+  Future<void> toggleRecipeBookmark(String recipeText) async {
+    final prefs = await SharedPreferences.getInstance();
+    final mainDish = extractMainDishAuto(recipeText);
+    final existingList = groupedRecipes[mainDish] ?? [];
+
+    if (existingList.contains(recipeText)) {
+      existingList.remove(recipeText);
+      bookmarkedRecipes.remove(recipeText);
+      if (existingList.isEmpty) {
+        groupedRecipes.remove(mainDish);
+      } else {
+        groupedRecipes[mainDish] = existingList;
+      }
+    } else {
+      existingList.add(recipeText);
+      bookmarkedRecipes.add(recipeText);
+      groupedRecipes[mainDish] = existingList;
+    }
+
+    await prefs.setString('grouped_recipes', json.encode(groupedRecipes));
+    if (mounted){
+    setState(() {});
+  }
+}
 
   Future<void> _fetchChatHistory({String? date}) async {
     final uri = date != null
@@ -60,6 +134,10 @@ class _ChatScreenState extends State<ChatScreen> {
         final data = json.decode(decodedBody) as List;
         setState(() {
           messages = data.map<Map<String, String>>((item) {
+            final message = item['message'];
+            if (item['sender'] == 'bot' && isRecipe(message!)){
+              bookmarkedRecipes.add(message);
+            }
             return {
               'sender': item['sender'],
               'message': item['message'],
@@ -172,18 +250,9 @@ class _ChatScreenState extends State<ChatScreen> {
                           icon: Icon(Icons.close),
                           onPressed: () => Navigator.pop(context),
                         ),
-                        ListTile(
-                          title: Text('사진/동영상'),
-                          onTap: () => Navigator.pop(context),
-                        ),
-                        ListTile(
-                          title: Text('파일'),
-                          onTap: () => Navigator.pop(context),
-                        ),
-                        ListTile(
-                          title: Text('링크'),
-                          onTap: () => Navigator.pop(context),
-                        ),
+                        ListTile(title: Text('사진/동영상'), onTap: () => Navigator.pop(context)),
+                        ListTile(title: Text('파일'), onTap: () => Navigator.pop(context)),
+                        ListTile(title: Text('링크'), onTap: () => Navigator.pop(context)),
                         ListTile(
                           title: Text('마이페이지'),
                           onTap: () {
@@ -228,14 +297,8 @@ class _ChatScreenState extends State<ChatScreen> {
             onPressed: () => _showDrawerWithDateFilter(context),
           ),
         ],
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            color: Color(0XFFFBFBFB)
-          ),
-        ),
-        systemOverlayStyle: SystemUiOverlayStyle.light.copyWith(
-          statusBarColor: Color(0xFFFBFBFB)
-        ),
+        flexibleSpace: Container(decoration: BoxDecoration(color: Color(0XFFFBFBFB))),
+        systemOverlayStyle: SystemUiOverlayStyle.light.copyWith(statusBarColor: Color(0xFFFBFBFB)),
       ),
       body: Column(
         children: [
@@ -268,35 +331,53 @@ class _ChatScreenState extends State<ChatScreen> {
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: Center(
-                child: Text(
-                  "대화기록이 없어요!",
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
-                ),
+                child: Text("대화기록이 없어요!", style: TextStyle(fontSize: 16, color: Colors.grey)),
               ),
             ),
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
               itemCount: messages.length,
-              itemBuilder: (context, index) => Align(
-                alignment: messages[index]['sender'] == 'user'
-                    ? Alignment.centerRight
-                    : Alignment.centerLeft,
-                child: Container(
-                  padding: EdgeInsets.all(10),
-                  margin: EdgeInsets.symmetric(vertical: 5, horizontal: 24),
-                  decoration: BoxDecoration(
-                    color: messages[index]['sender'] == 'user'
-                        ? Color(0xFFFF5833)
-                        : Color(0xFF9F9F9F),
-                    borderRadius: BorderRadius.circular(10),
+              itemBuilder: (context, index) {
+                final isUser = messages[index]['sender'] == 'user';
+                final text = messages[index]['message']!;
+                final recipe = isRecipe(text);
+
+                if (!isUser && recipe) addToRecentRecipes(text);
+
+                return Align(
+                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                  child: Stack(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(10),
+                        margin: EdgeInsets.symmetric(vertical: 5, horizontal: 24),
+                        decoration: BoxDecoration(
+                          color: isUser ? Color(0xFFFF5833) : Color(0xFF9F9F9F),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(text, style: TextStyle(color: Colors.white)),
+                      ),
+                      if (!isUser && recipe)
+                        Positioned(
+                          bottom: 4,
+                          right: 16,
+                          child: IconButton(
+                            icon: Icon(
+                              bookmarkedRecipes.contains(text)
+                                  ? Icons.bookmark
+                                  : Icons.bookmark_border,
+                              color: bookmarkedRecipes.contains(text)
+                                  ? Color(0xFFFF5833)
+                                  : Colors.white,
+                            ),
+                            onPressed: () => toggleRecipeBookmark(text),
+                          ),
+                        ),
+                    ],
                   ),
-                  child: Text(
-                    messages[index]['message']!,
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ),
+                );
+              },
             ),
           ),
           if (imageUrl.isNotEmpty)
