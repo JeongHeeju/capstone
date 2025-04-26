@@ -1,4 +1,3 @@
-
 from django.contrib.auth import views as auth_views
 from django.urls import path
 from . import views
@@ -10,4 +9,5 @@ urlpatterns = [
     path('save_food_preferences/', views.save_food_preferences, name='save_food_preferences'),
     path('save_allergy_info/', views.save_allergy_info, name='save_allergy_info'),
     path('profile_exists/', views.profile_exists, name= 'proprofile_exists'),
+    path('delete_account/', views.delete_account, name='delete_account'),
 ]
