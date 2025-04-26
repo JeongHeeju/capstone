@@ -1,29 +1,25 @@
-import json, re, os, logging
+import json, re, os, logging, openai
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from langchain_community.chat_models import ChatOpenAI
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from dotenv import load_dotenv
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import AllowAny
 from users.models import UserProfile, FoodPreference, Allergy
-
+from .models import ChatHistory
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from .models import ChatHistory
 from django.http import JsonResponse
 from django.utils.dateparse import parse_date
 from datetime import datetime, timedelta
 from django.utils.timezone import make_aware
+from openai import OpenAI
 
+load_dotenv()
+logger = logging.getLogger(__name__)
 
-
-
-
-
-# 음식별 태그 매핑
 FOOD_TAGS = {
     "불고기": ["양념고기", "익힌고기", "소고기", "달짝지근한 맛"],
     "김치찌개": ["매운맛", "국물요리", "돼지고기", "김치"],
@@ -37,15 +33,43 @@ FOOD_TAGS = {
     "케이크": ["디저트", "달콤한맛", "빵", "크림"],
 }
 
-load_dotenv()
-logger = logging.getLogger(__name__)
-
 def get_last_food_state(session):
     return session.get("last_was_food", False)
 
 def set_last_food_state(session, is_food):
     session["last_was_food"] = is_food
     session.modified = True
+
+def get_chat_session(session, topic="default"):
+    sessions = session.get("chat_sessions", {})
+    return sessions.get("topics", {}).get(topic, [])
+
+def set_chat_session(session, topic, history):
+    if "chat_sessions" not in session:
+        session["chat_sessions"] = {"current_topic": topic, "topics": {topic: history}}
+    else:
+        session["chat_sessions"]["current_topic"] = topic
+        if "topics" not in session["chat_sessions"]:
+            session["chat_sessions"]["topics"] = {}
+        session["chat_sessions"]["topics"][topic] = history
+    session.modified = True
+
+def extract_topic_with_gpt(llm, user_message):
+    system_msg = SystemMessage(content=(
+        "You are a topic classifier for food-related user queries.\n"
+        "Possible topics: 한식, 양식, 일식, 중식, 다이어트, 디저트, 카페, 기타.\n"
+        "Respond ONLY with the topic name from the list above, nothing else."
+    ))
+    user_msg = HumanMessage(content=user_message)
+
+    try:
+        result = llm.invoke([system_msg, user_msg])
+        topic = result.content.strip()
+        allowed_topics = ["한식", "양식", "일식", "중식", "다이어트", "디저트", "카페", "기타"]
+        return topic if topic in allowed_topics else "기타"
+    except Exception as e:
+        logger.error(f"Topic classification error: {e}")
+        return "기타"
 
 class ChatAPIView(APIView):
     permission_classes = [AllowAny]
@@ -54,136 +78,150 @@ class ChatAPIView(APIView):
         try:
             user_message = request.data.get("message", "").strip()
             if not user_message:
-                return Response({"error": "Message is required."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "메시지를 입력받지 못했어요. :("}, status=status.HTTP_400_BAD_REQUEST)
 
             api_key = os.getenv("OPENAI_API_KEY")
             if not api_key:
                 logger.error("OPENAI_API_KEY is missing.")
-                return Response({"error": "OPENAI_API_KEY not found."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response({"error": "OPENAI_API_KEY를 확인해주세요. :)"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-            try:
-                llm = ChatOpenAI(model="gpt-3.5-turbo", openai_api_key=api_key, temperature=0)
-            except Exception as e:
-                logger.error(f"GPT init error: {e}")
-                return Response({"error": "GPT model initialization failed."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            llm = ChatOpenAI(model="gpt-4-turbo", openai_api_key=api_key, temperature=0.3, max_tokens=1024)
+            openai_client = OpenAI(api_key=api_key)
 
             if request.user.is_authenticated:
                 try:
                     user_profile = UserProfile.objects.get(user_id=request.user)
-                except UserProfile.DoesNotExist:
-                    return Response({"error": "UserProfile not found."}, status=status.HTTP_400_BAD_REQUEST)
+                    preferences = FoodPreference.objects.filter(user=user_profile)
+                    allergies = Allergy.objects.filter(user=user_profile)
 
-                preferences = FoodPreference.objects.filter(user=user_profile)
-                allergies = Allergy.objects.filter(user=user_profile)
-                medical_conditions_list = []
-                if user_profile.medical_conditions:
-                    medical_conditions_list = [c.strip() for c in user_profile.medical_conditions.split(',')]
+                    liked_foods = [p.food_name for p in preferences if p.is_liked]
+                    disliked_foods = [p.food_name for p in preferences if not p.is_liked]
+                    liked_tags = [tag for food in liked_foods for tag in FOOD_TAGS.get(food, [])]
+                    disliked_tags = [tag for food in disliked_foods for tag in FOOD_TAGS.get(food, [])]
 
-                liked_foods = [p.food_name for p in preferences if p.is_liked]
-                disliked_foods = [p.food_name for p in preferences if not p.is_liked]
-
-                liked_tags = [tag for food in liked_foods for tag in FOOD_TAGS.get(food, [])]
-                disliked_tags = [tag for food in disliked_foods for tag in FOOD_TAGS.get(food, [])]
-
-                system_prompt = (
-                    "You are 푸렌즈, an AI assistant specializing in food and dining.\n"
-                    "User Profile Information:\n"
-                    f"Medical Conditions: {medical_conditions_list}\n"
-                    f"Allergies: {[al.allergy_name for al in allergies]}\n"
-                    f"Liked Foods: {liked_foods}\n"
-                    f"Liked Tags: {liked_tags}\n"
-                    f"Disliked Foods: {disliked_foods}\n"
-                    f"Disliked Tags: {disliked_tags}\n"
-                    "Based on this information, provide personalized meal suggestions in Korean.\n"
-                )
+                    system_prompt = (
+                        "너는 '푸렌즈'라는 이름을 가진 친절한 한국어 식단 추천 챗봇이야."
+                        "항상 사용자 입장에서 공감하며, 부담 없는 말투로 이야기해줘."
+                        "의학적 진단이나 치료는 하지 않고, 사용자의 건강 상태에 맞춰 식단만 제안해야 해."
+                        "허구의 요리 이름이나 검증되지 않은 레시피는 절대 추천하지 마."
+                        "다양한 스타일의 요리를 제안하되, 실제 존재하는 음식이나 일반적으로 알려진 요리를 사용해."
+                        f"- 알레르기: {[al.allergy_name for al in allergies]}"
+                        f"- 좋아하는 음식: {liked_foods} (관련 태그: {liked_tags})"
+                        f"- 싫어하는 음식: {disliked_foods} (관련 태그: {disliked_tags})"
+                    )
+                except Exception as e:
+                    logger.error(f"User profile fetch error: {e}")
+                    system_prompt = (
+                        "너는 '푸렌즈'라는 이름을 가진 친절한 한국어 식단 추천 챗봇이야."
+                        "항상 사용자 입장에서 공감하며, 부담 없는 말투로 이야기해줘."
+                        "의학적 진단이나 치료는 하지 않고, 사용자가 부담 없이 즐길 수 있는 음식을 추천해줘."
+                        "허구의 요리 이름이나 검증되지 않은 레시피는 절대 추천하지 마."
+                        "다양한 스타일의 요리를 제안하되, 실제 존재하는 음식이나 일반적으로 알려진 요리를 사용해."
+                    )
             else:
                 system_prompt = (
-                    "You are 푸렌즈, an AI assistant specializing in food and dining.\n"
-                    "Provide general meal suggestions in Korean.\n"
+                    "너는 '푸렌즈'라는 이름을 가진 친절한 한국어 식단 추천 챗봇이야."
+                    "항상 사용자 입장에서 공감하며, 부담 없는 말투로 이야기해줘."
+                    "의학적 진단이나 치료는 하지 않고, 사용자가 부담 없이 즐길 수 있는 음식을 추천해줘."
+                    "허구의 요리 이름이나 검증되지 않은 레시피는 절대 추천하지 마."
+                    "다양한 스타일의 요리를 제안하되, 실제 존재하는 음식이나 일반적으로 알려진 요리를 사용해."
                 )
 
-            primary_decision = self.ask_gpt_yes_no(
-                llm,
-                "You are a classifier that decides if a user message is strictly about food or dining. "
-                "Respond ONLY with 'Yes' or 'No'.\nQuestion: ",
-                user_message
-            ) or "no"
-
+            primary_decision = self.ask_gpt_yes_no(llm, user_message)
             final_decision = self.keyword_based_correction(user_message, primary_decision)
-
-            last_was_food = get_last_food_state(request.session)
-            followup_pattern = r"(말고|더\s*없|추가|다른\s*메뉴|색다른|새로운|또\s*뭐)"
-            if last_was_food and final_decision == "no" and re.search(followup_pattern, user_message.lower()):
-                final_decision = "yes"
-
             is_food_related = (final_decision == "yes")
 
-            if is_food_related:
-                system_msg = SystemMessage(content=system_prompt)
-                user_msg = HumanMessage(content=user_message)
-                try:
-                    result_msg = llm.invoke([system_msg, user_msg])
-                    bot_text = result_msg.content.strip()
-                except Exception as e:
-                    logger.error(f"GPT invocation error: {e}")
-                    bot_text = "Error generating response. Please try again later."
-                final_answer = f"푸렌즈가 알려드릴게요! {bot_text}"
-                ChatHistory.objects.create(
-                  user_id=request.user.user_id,
-                  message=user_message,
-                  response=final_answer
-              )
-                set_last_food_state(request.session, True)
+            if not is_food_related:
+                return Response({"response": "푸렌즈는 음식 관련 질문에만 답변할 수 있어요!"}, status=status.HTTP_200_OK)
+
+            topic = extract_topic_with_gpt(llm, user_message)
+            prev_topic = request.session.get("chat_sessions", {}).get("current_topic", None)
+            recipe_followup_keywords = ["레시피", "만드는 법", "조리법", "요리법", "요리", "또 뭐 있어", "다른 메뉴"]
+            is_recipe_followup = any(k in user_message.lower() for k in recipe_followup_keywords)
+
+            if topic != prev_topic and not is_recipe_followup:
+                chat_history = []
             else:
-                final_answer = "푸렌즈는 음식 관련 질문에만 답변할 수 있어요!"
-                set_last_food_state(request.session, False)
+                chat_history = get_chat_session(request.session, prev_topic or topic)
+
+            messages = [SystemMessage(content=system_prompt)]
+            for entry in chat_history[-5:]:
+                if entry["role"] == "user":
+                    messages.append(HumanMessage(content=entry["content"]))
+                elif entry["role"] == "assistant":
+                    messages.append(AIMessage(content=entry["content"]))
+            messages.append(HumanMessage(content=user_message))
+
+            result_msg = llm.invoke(messages)
+            bot_text = result_msg.content.strip()
+
+            final_answer = f"푸렌즈가 알려드릴게요! {bot_text}"
+
+            chat_history.append({"role": "user", "content": user_message})
+            chat_history.append({"role": "assistant", "content": bot_text})
+            chat_history = chat_history[-5:]
+            set_chat_session(request.session, topic, chat_history)
+            set_last_food_state(request.session, True)
+
+            if request.user.is_authenticated:
+                ChatHistory.objects.create(
+                    user_id=request.user.user_id,
+                    message=user_message,
+                    response=final_answer
+                )
 
             return Response({
-                "user_message": user_message,
                 "response": final_answer,
+                "recipe_image_url": None  # 필요 시 이미지 처리 가능
             }, status=status.HTTP_200_OK)
 
         except Exception as e:
             logger.error(f"Server error: {e}")
-            return Response({"error": "Internal server error. Please try again later."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": "Internal server error."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def ask_gpt_yes_no(self, llm, prompt_text, user_message):
-        sys_msg = SystemMessage(content=prompt_text + user_message)
-        user_msg = HumanMessage(content=user_message)
-        ai_response = llm.invoke([sys_msg, user_msg])
+    def ask_gpt_yes_no(self, llm, user_message):
+        messages = [
+            SystemMessage(content="You are a Korean chatbot that ONLY classifies whether a message is food or eating related. Respond only with 'Yes' or 'No'."),
+            HumanMessage(content=user_message)
+        ]
+        ai_response = llm.invoke(messages)
         raw_output = ai_response.content.strip().lower()
         first_token = raw_output.split()[0] if raw_output else ""
         if first_token.startswith("yes"):
             return "yes"
         elif first_token.startswith("no"):
             return "no"
-        else:
-            return None
+        return None
 
     def keyword_based_correction(self, user_message, gpt_decision):
+        def recent_chat_contains_food_keyword(session):
+            recent_chats = []
+            for topic_chats in session.get("chat_sessions", {}).get("topics", {}).values():
+                recent_chats.extend(topic_chats[-3:])
+            keywords = ["레시피", "요리", "재료", "음식", "조리", "먹어", "만드는 법"]
+            return any(any(k in c["content"] for k in keywords) for c in recent_chats if c["role"] == "user")
+
         user_lower = user_message.lower()
-        food_keywords = [
-            "아침", "점심", "저녁", "식사", "메뉴", "맛집", "레시피", "요리",
-            "배달", "주문", "카페", "디저트", "간식", "다이어트", "건강식",
-            "추천", "뭐 먹을까", "뭘 먹지", "음식", "밥", "국", "찌개",
-            "비빔밥", "라면", "샌드위치", "피자", "햄버거", "치킨", "샐러드"
-        ]
+        strong_pattern = r"(뭐\s*먹(을|지)|먹(고\s*싶|을까)|추천(해)?줘|요리법|레시피|만드는\s*법|조리법)"
+        followup_pattern = r"(말고|더\s*없|추가|다른.*|색다른|새로운|또\s*뭐|다른\s*건|다른\s*거)"
+
         if gpt_decision == "no":
-            if any(k in user_lower for k in food_keywords):
-                if re.search(r"(추천|뭐\s*먹|뭘\s*먹|메뉴|맛집|레시피|요리|식사|배달)", user_lower):
-                    return "yes"
+            if re.search(strong_pattern, user_lower):
+                return "yes"
+            elif get_last_food_state(self.request.session) and re.search(followup_pattern, user_lower):
+                return "yes"
+            elif recent_chat_contains_food_keyword(self.request.session):
+                return "yes"
+
         return gpt_decision
-  
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_chat_history(request):
     user_id = request.user.user_id
     date_str = request.GET.get("date", None)
-
-    # 기본 쿼리셋: 로그인한 사용자의 채팅 내역 전체
     chats = ChatHistory.objects.filter(user_id=user_id)
 
-    # 날짜가 주어졌다면 해당 날짜로 필터링
     if date_str:
         try:
             date_obj = parse_date(date_str)
@@ -200,5 +238,3 @@ def get_chat_history(request):
         data.append({"sender": "bot", "message": chat.response})
 
     return JsonResponse(data, safe=False, json_dumps_params={'ensure_ascii': False})
-
-
