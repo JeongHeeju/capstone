@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'information_screen.dart';
 
 class MypageScreen extends StatefulWidget {
@@ -11,33 +13,51 @@ class MypageScreen extends StatefulWidget {
 
 class _MypageScreenState extends State<MypageScreen> {
   int selectedTab = 0;
-
-  final recentRecipes = [
-    'assets/bulgogi.png',
-    'assets/tteokbokki.png',
-    'assets/cake.png',
-  ];
-
-  final savedRecipes = [
-    'assets/sushi.png',
-    'assets/cake.png',
-  ];
-
-  late List<bool> recentBookmarks;
-  late List<bool> savedBookmarks;
+  Map<String, List<String>> groupedRecipes = {};
+  List<String> recentRecipes = [];
 
   @override
   void initState() {
     super.initState();
-    recentBookmarks = List<bool>.filled(recentRecipes.length, false);
-    savedBookmarks = List<bool>.filled(savedRecipes.length, true);
+    _loadRecipes();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadRecipes(); // 마이페이지로 돌아올 때마다 최신 상태 반영
+  }
+
+  Future<void> _loadRecipes() async {
+    final prefs = await SharedPreferences.getInstance();
+    final groupedRaw = prefs.getString('grouped_recipes') ?? '{}';
+    final recentRaw = prefs.getStringList('recent_recipes') ?? [];
+
+    setState(() {
+      groupedRecipes = (json.decode(groupedRaw) as Map<String, dynamic>).map(
+        (key, value) => MapEntry(key, List<String>.from(value)),
+      );
+      recentRecipes = List<String>.from(recentRaw.reversed);
+    });
+  }
+
+  Future<void> _removeRecipe(String mainDish, String recipe) async {
+    final prefs = await SharedPreferences.getInstance();
+    final rawJson = prefs.getString('grouped_recipes') ?? '{}';
+    final Map<String, dynamic> decoded = json.decode(rawJson);
+    final Map<String, List<String>> grouped = decoded.map((key, value) => MapEntry(key, List<String>.from(value)));
+
+    if (grouped[mainDish]?.contains(recipe) ?? false) {
+      grouped[mainDish]?.remove(recipe);
+      if (grouped[mainDish]?.isEmpty ?? false) grouped.remove(mainDish);
+
+      await prefs.setString('grouped_recipes', json.encode(grouped));
+      _loadRecipes();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final currentList = selectedTab == 0 ? recentRecipes : savedRecipes;
-    final currentBookmarks = selectedTab == 0 ? recentBookmarks : savedBookmarks;
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFFFBFBFB),
@@ -170,48 +190,59 @@ class _MypageScreenState extends State<MypageScreen> {
           ),
           const SizedBox(height: 20),
           Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              itemCount: currentList.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 1,
-              ),
-              itemBuilder: (context, index) {
-                return Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.asset(
-                        currentList[index],
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        height: double.infinity,
-                      ),
-                    ),
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: IconButton(
-                        icon: Icon(
-                          currentBookmarks[index] ? Icons.bookmark : Icons.bookmark_border,
-                          color: currentBookmarks[index]
-                              ? const Color(0xFFFF5833)
-                              : const Color(0xFFE0E0E0),
+            child: selectedTab == 0
+                ? ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    itemCount: recentRecipes.length,
+                    itemBuilder: (context, index) {
+                      return Card(
+                        color: Colors.white,
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Text(recentRecipes[index]),
                         ),
-                        onPressed: () {
-                          setState(() {
-                            currentBookmarks[index] = !currentBookmarks[index];
-                          });
-                        },
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
+                      );
+                    },
+                  )
+                : ListView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    children: groupedRecipes.entries.map((entry) {
+                      return ExpansionTile(
+                        title: Text(entry.key, style: TextStyle(fontWeight: FontWeight.bold)),
+                        children: entry.value.map((recipe) {
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 3)],
+                            ),
+                            child: Stack(
+                              children: [
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(right: 40),
+                                    child: Text(recipe),
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 0,
+                                  right: 0,
+                                  child: IconButton(
+                                    icon: Icon(Icons.delete, color: Colors.grey),
+                                    onPressed: () => _removeRecipe(entry.key, recipe),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      );
+                    }).toList(),
+                  ),
           ),
         ],
       ),
