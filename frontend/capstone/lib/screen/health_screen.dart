@@ -2,12 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'health_provider.dart';
 
 class HealthScreen extends StatefulWidget {
-  const HealthScreen({super.key});
+  final bool fromInformationScreen;
+  const HealthScreen({super.key, this.fromInformationScreen = false});
 
   @override
   State<HealthScreen> createState() => _HealthScreenState();
+}
+class HealthInfo {
+  final String gender;
+  final DateTime? birthdate;
+  final double height;
+  final double weight;
+  final List<String> conditions;
+
+  HealthInfo({
+    required this.gender,
+    required this.birthdate,
+    required this.height,
+    required this.weight,
+    required this.conditions,
+  });
 }
 
 class _HealthScreenState extends State<HealthScreen> {
@@ -101,7 +118,11 @@ class _HealthScreenState extends State<HealthScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('정보가 저장되었습니다.')),
         );
-        Navigator.pushNamed(context, '/food');
+        if (widget.fromInformationScreen){
+          Navigator.pushNamedAndRemoveUntil(context, '/info', (route) =>false);
+        }else {
+          Navigator.pushNamed(context, '/food');
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('정보 저장에 실패했습니다. 다시 시도해주세요.')),
@@ -169,17 +190,25 @@ class _HealthScreenState extends State<HealthScreen> {
               ),
               SizedBox(height: 30),
               Text('진단받은 질환', style: TextStyle(fontSize: 16)),
+              SizedBox(height: 8),
               Wrap(
                 spacing: 10,
                 children: _medicalConditions.map((condition) {
                   final isSelected = _selectedConditions.contains(condition);
-                  return ChoiceChip(
-                    label: Text(condition),
-                    selected: isSelected,
-                    onSelected: (_) => _toggleCondition(condition),
-                    selectedColor: Color(0xFFFF5833),
-                    labelStyle: TextStyle(color: isSelected ? Colors.white : Color(0xFF2F2F2F)),
-                    backgroundColor: Color(0xFFFBFBFB),
+                  return GestureDetector(
+                    onTap: () => _toggleCondition(condition),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isSelected ? Color(0xFFFF5833) : Color(0xFFFBFBFB),
+                        borderRadius: BorderRadius.circular(50),
+                        border: Border.all(color: isSelected ? Color(0xFFFF5833) : Color(0xFFE0E0E0), width: 1),
+                      ),
+                      child: Text(
+                        condition,
+                        style: TextStyle(fontSize: 12, color: isSelected ? Color(0xFFFBFBFB) : Color(0xFF2F2F2F)),
+                      ),
+                    ),
                   );
                 }).toList(),
               ),
@@ -191,7 +220,9 @@ class _HealthScreenState extends State<HealthScreen> {
                     backgroundColor: Color(0xFFFF5833),
                     padding: EdgeInsets.symmetric(horizontal: 50, vertical: 16),
                   ),
-                  child: Text('다음', style: TextStyle(fontSize: 16, color: Color(0xFFFBFBFB))),
+                  child: Text(
+                    widget.fromInformationScreen ? '완료' : '다음',
+                    style: TextStyle(fontSize: 16, color: Color(0xFFFBFBFB))),
                 ),
               ),
             ],
@@ -207,11 +238,14 @@ class _HealthScreenState extends State<HealthScreen> {
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 30, vertical: 16),
         decoration: BoxDecoration(
-          color: Color(0xFFFBFBFB),
+          color: isSelected ? Color(0xFFFF5833) : Color(0xFFFBFBFB),
           borderRadius: BorderRadius.circular(50),
-          border: Border.all(color: isSelected ? Color(0xFF2F2F2F) : Color(0xFFE0E0E0), width: 1),
+          border: Border.all(color: isSelected ? Color(0xFFFF5833) : Color(0xFFE0E0E0), width: 1),
         ),
-        child: Text(label, style: TextStyle(fontSize: 12, color: Color(0xFF2F2F2F))),
+        child: Text(
+          label,
+          style: TextStyle(fontSize: 12, color: isSelected ? Color(0xFFFBFBFB) : Color(0xFF2F2F2F)),
+        ),
       ),
     );
   }
@@ -240,3 +274,6 @@ class _HealthScreenState extends State<HealthScreen> {
     );
   }
 }
+
+
+
