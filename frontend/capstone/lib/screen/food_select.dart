@@ -158,7 +158,7 @@ class _FoodSelectScreenState extends State<FoodSelectScreen> {
                           borderRadius: BorderRadius.circular(10),
                           child: Image.asset(
                             image,
-                            fit: BoxFit.cover,
+                            fit: BoxFit.contain,
                           ),
                         ),
                       ),
