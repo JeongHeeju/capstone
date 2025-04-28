@@ -51,7 +51,9 @@ class InformationScreen extends StatelessWidget {
            if (item == '기본 설문') {
               Navigator.push(
                context,
-                MaterialPageRoute(builder: (_) => const HealthScreen()),
+                MaterialPageRoute(
+                  builder: (_) => HealthScreen(fromInformationScreen: true),
+              ),
             );
           }
 
