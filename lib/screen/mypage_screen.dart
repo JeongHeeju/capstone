@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_projects/screen/service_screen.dart';
 import 'information_screen.dart';
+import 'notice_screen.dart';
 
 class MypageScreen extends StatefulWidget {
   const MypageScreen({Key? key}) : super(key: key);
@@ -110,7 +112,11 @@ class _MypageScreenState extends State<MypageScreen> {
                               ),
                               TextButton(
                                 onPressed: () {
-                                  Navigator.pop(context);
+                                  Navigator.push(context,
+                                    MaterialPageRoute(
+                                      builder: (context) => NoticeScreen(),
+                                    ),
+                                  );
                                 },
                                 style: TextButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -124,7 +130,11 @@ class _MypageScreenState extends State<MypageScreen> {
                               ),
                               TextButton(
                                 onPressed: () {
-                                  Navigator.pop(context);
+                                  Navigator.push(context,
+                                    MaterialPageRoute(
+                                      builder: (context) => ServiceScreen(),
+                                    ),
+                                  );
                                 },
                                 style: TextButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
