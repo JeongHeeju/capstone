@@ -1,8 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_projects/screen/service_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'information_screen.dart';
+import 'notice_screen.dart';
+import 'service_screen.dart';
 
 class MypageScreen extends StatefulWidget {
   const MypageScreen({Key? key}) : super(key: key);
@@ -25,13 +28,14 @@ class _MypageScreenState extends State<MypageScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _loadRecipes(); // 마이페이지로 돌아올 때마다 최신 상태 반영
+    _loadRecipes();
   }
 
   Future<void> _loadRecipes() async {
     final prefs = await SharedPreferences.getInstance();
-    final groupedRaw = prefs.getString('grouped_recipes') ?? '{}';
-    final recentRaw = prefs.getStringList('recent_recipes') ?? [];
+    final token = prefs.getString('token') ?? '';
+    final groupedRaw = prefs.getString('grouped_recipes_$token') ?? '{}';
+    final recentRaw = prefs.getStringList('recent_recipes_$token') ?? [];
 
     setState(() {
       groupedRecipes = (json.decode(groupedRaw) as Map<String, dynamic>).map(
@@ -43,15 +47,17 @@ class _MypageScreenState extends State<MypageScreen> {
 
   Future<void> _removeRecipe(String mainDish, String recipe) async {
     final prefs = await SharedPreferences.getInstance();
-    final rawJson = prefs.getString('grouped_recipes') ?? '{}';
+    final token = prefs.getString('token') ?? '';
+    final rawJson = prefs.getString('grouped_recipes_$token') ?? '{}';
     final Map<String, dynamic> decoded = json.decode(rawJson);
-    final Map<String, List<String>> grouped = decoded.map((key, value) => MapEntry(key, List<String>.from(value)));
+    final Map<String, List<String>> grouped =
+        decoded.map((key, value) => MapEntry(key, List<String>.from(value)));
 
     if (grouped[mainDish]?.contains(recipe) ?? false) {
       grouped[mainDish]?.remove(recipe);
       if (grouped[mainDish]?.isEmpty ?? false) grouped.remove(mainDish);
 
-      await prefs.setString('grouped_recipes', json.encode(grouped));
+      await prefs.setString('grouped_recipes_$token', json.encode(grouped));
       _loadRecipes();
     }
   }
@@ -64,7 +70,8 @@ class _MypageScreenState extends State<MypageScreen> {
         foregroundColor: const Color(0xFF2F2F2F),
         elevation: 0,
         centerTitle: true,
-        title: const Text('마이페이지', style: TextStyle(color: Color(0xFF2F2F2F))),
+        title:
+            const Text('마이페이지', style: TextStyle(color: Color(0xFF2F2F2F))),
         iconTheme: const IconThemeData(color: Color(0xFF2F2F2F)),
         flexibleSpace: Container(
           decoration: const BoxDecoration(color: Color(0xFFFBFBFB)),
@@ -85,7 +92,8 @@ class _MypageScreenState extends State<MypageScreen> {
                     child: Container(
                       width: 100,
                       decoration: BoxDecoration(
-                        border: Border.all(color: Color(0xFF2F2F2F).withOpacity(0.5)),
+                        border: Border.all(
+                            color: Color(0xFF2F2F2F).withOpacity(0.5)),
                         borderRadius: BorderRadius.circular(10),
                         color: const Color(0xFFFBFBFB),
                       ),
@@ -98,34 +106,51 @@ class _MypageScreenState extends State<MypageScreen> {
                               Navigator.pop(context);
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => const InformationScreen()),
+                                MaterialPageRoute(
+                                    builder: (context) => const InformationScreen()),
                               );
                             },
                             style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 16),
                               alignment: Alignment.centerLeft,
                               foregroundColor: const Color(0xFF2F2F2F),
-                              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                              shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.zero),
                             ),
                             child: const Text('회원정보'),
                           ),
                           TextButton(
-                            onPressed: () => Navigator.pop(context),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const NoticeScreen()),
+                                );
+                            },
                             style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 16),
                               alignment: Alignment.centerLeft,
                               foregroundColor: const Color(0xFF2F2F2F),
-                              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                              shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.zero),
                             ),
                             child: const Text('공지사항'),
                           ),
                           TextButton(
-                            onPressed: () => Navigator.pop(context),
+                            onPressed: () {
+                              Navigator.push(context,
+                                MaterialPageRoute(
+                                  builder: (context) => const ServiceScreen(),),
+                              );
+                            },
                             style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 16),
                               alignment: Alignment.centerLeft,
                               foregroundColor: const Color(0xFF2F2F2F),
-                              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                              shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.zero),
                             ),
                             child: const Text('고객센터'),
                           ),
@@ -144,7 +169,8 @@ class _MypageScreenState extends State<MypageScreen> {
           const SizedBox(height: 16),
           const Icon(Icons.account_circle, size: 50),
           const SizedBox(height: 8),
-          const Text('USER', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text('USER',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -154,12 +180,16 @@ class _MypageScreenState extends State<MypageScreen> {
                 child: Column(
                   children: [
                     Icon(Icons.history,
-                        color: selectedTab == 0 ? Color(0xFFFF5833) : Color(0xFFE0E0E0)),
+                        color: selectedTab == 0
+                            ? Color(0xFFFF5833)
+                            : Color(0xFFE0E0E0)),
                     const SizedBox(height: 5),
                     Text(
                       '최근 본 레시피',
                       style: TextStyle(
-                        color: selectedTab == 0 ? Color(0xFFFF5833) : Color(0xFFE0E0E0),
+                        color: selectedTab == 0
+                            ? Color(0xFFFF5833)
+                            : Color(0xFFE0E0E0),
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
@@ -173,12 +203,16 @@ class _MypageScreenState extends State<MypageScreen> {
                 child: Column(
                   children: [
                     Icon(Icons.bookmark,
-                        color: selectedTab == 1 ? Color(0xFFFF5833) : Color(0xFFE0E0E0)),
+                        color: selectedTab == 1
+                            ? Color(0xFFFF5833)
+                            : Color(0xFFE0E0E0)),
                     const SizedBox(height: 5),
                     Text(
                       '저장한 레시피',
                       style: TextStyle(
-                        color: selectedTab == 1 ? Color(0xFFFF5833) : Color(0xFFE0E0E0),
+                        color: selectedTab == 1
+                            ? Color(0xFFFF5833)
+                            : Color(0xFFE0E0E0),
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
@@ -209,7 +243,8 @@ class _MypageScreenState extends State<MypageScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     children: groupedRecipes.entries.map((entry) {
                       return ExpansionTile(
-                        title: Text(entry.key, style: TextStyle(fontWeight: FontWeight.bold)),
+                        title: Text(entry.key,
+                            style: TextStyle(fontWeight: FontWeight.bold)),
                         children: entry.value.map((recipe) {
                           return Container(
                             margin: const EdgeInsets.only(bottom: 12),
@@ -217,23 +252,41 @@ class _MypageScreenState extends State<MypageScreen> {
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(8),
-                              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 3)],
+                              boxShadow: [
+                                BoxShadow(color: Colors.black12, blurRadius: 3)
+                              ],
                             ),
                             child: Stack(
                               children: [
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(right: 40),
-                                    child: Text(recipe),
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 32.0, right: 8.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      Text(
+                                        recipe,
+                                        style: TextStyle(fontSize: 14),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Align(
+                                        alignment: Alignment.bottomRight,
+                                        child: IconButton(
+                                          icon: Icon(Icons.delete,
+                                              color: Colors.grey),
+                                          onPressed: () =>
+                                              _removeRecipe(entry.key, recipe),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                                 Positioned(
-                                  top: 0,
+                                  top: -8,
                                   right: 0,
                                   child: IconButton(
-                                    icon: Icon(Icons.delete, color: Colors.grey),
-                                    onPressed: () => _removeRecipe(entry.key, recipe),
+                                    icon:
+                                        Icon(Icons.share, color: Colors.grey),
+                                    onPressed: () {},
                                   ),
                                 ),
                               ],
