@@ -50,7 +50,7 @@ class _AllergyScreenState extends State<AllergyScreen> {
   }
 
   Future<void> saveAllergyInfo() async {
-    final url = Uri.parse('http://127.0.0.1:8000/users/save_allergy_info/');
+    final url = Uri.parse('http://10.0.2.2:8000/users/save_allergy_info/');
     try {
       final response = await http.post(
         url,
@@ -144,15 +144,17 @@ class _AllergyScreenState extends State<AllergyScreen> {
             Text('푸렌즈가 알레르기 음식을 기억할게요!', style: TextStyle(fontSize: 12)),
             SizedBox(height: 20),
             Expanded(
-              child: SingleChildScrollView(
-                child: Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
+              child: GridView.count(
+                crossAxisCount: 3,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 2.5,
                   children: allergyItems.map((item) {
                     final isSelected = allergies.contains(item);
                     return GestureDetector(
                       onTap: () => toggleAllergy(item),
                       child: Container(
+                        alignment: Alignment.center,
                         padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
                           color: isSelected ? Color(0xFFFF5833) : Color(0xFFE0E0E0),
@@ -171,7 +173,7 @@ class _AllergyScreenState extends State<AllergyScreen> {
                   }).toList(),
                 ),
               ),
-            ),
+            
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -195,3 +197,5 @@ class _AllergyScreenState extends State<AllergyScreen> {
     );
   }
 }
+
+
