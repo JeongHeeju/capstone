@@ -1,62 +1,121 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+import 'package:linkify/linkify.dart';
 import 'chatserve_screen.dart';
+
+
+/// 채팅 항목 타입 구분용
+enum ChatItemType { userText, botText, image, map }
+
+/// 채팅 화면에서 렌더링할 각 항목 모델
+class ChatItem {
+  final ChatItemType type;
+  final String content;
+  ChatItem(this.type, this.content);
+}
 
 class ChatScreen extends StatefulWidget {
   final List<String> selectedFoods;
   final List<String> allergies;
   final String userToken;
 
-  ChatScreen({
+  const ChatScreen({
+    Key? key,
     this.selectedFoods = const [],
     this.allergies = const [],
     required this.userToken,
-  });
+  }) : super(key: key);
 
   @override
   _ChatScreenState createState() => _ChatScreenState();
 }
 
 class _ChatScreenState extends State<ChatScreen> {
+  final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  late final WebViewController _mapController;
+
   bool _isMessageVisible = true;
   bool _showNoDataMessage = false;
-  String imageUrl = '';
-  TextEditingController _controller = TextEditingController();
-  ScrollController _scrollController = ScrollController();
-  List<Map<String, String>> messages = [];
+
+  List<ChatItem> _items = [];
   Set<String> bookmarkedRecipes = {};
   Map<String, List<String>> groupedRecipes = {};
 
   @override
   void initState() {
     super.initState();
-    _fetchChatHistory();
+    // 지도용 WebView 컨트롤러 초기화
+    _mapController = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onNavigationRequest: (NavigationRequest request) {
+            final url = request.url;
+            if (url.startsWith('kakaomap://')) {
+              launchUrl(
+                Uri.parse(url),
+                mode: LaunchMode.externalApplication,
+              );
+              return NavigationDecision.prevent;
+            }
+            return NavigationDecision.navigate;
+          },
+        ),
+      );
     _loadBookmarkedRecipes();
+      _fetchChatHistory();
+  }
+
+  Future<void> openUrlWithChrome(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      print("URL launch 실패: $url");
+    }
+  }
+
+  List<TextSpan> _buildLinkifiedTextSpans(String text) {
+    final elements = linkify(text, options: LinkifyOptions(humanize: false));
+    return elements.map((element) {
+      if (element is LinkableElement) {
+        return TextSpan(
+          text: element.text,
+          style: TextStyle(color: Colors.yellowAccent),
+          recognizer: TapGestureRecognizer()
+            ..onTap = () async {
+              await openUrlWithChrome(element.url);
+            },
+        );
+      } else {
+        return TextSpan(text: element.text);
+      }
+    }).toList();
   }
 
   Future<void> _loadBookmarkedRecipes() async {
     final prefs = await SharedPreferences.getInstance();
-    final rawJson = prefs.getString('grouped_recipes') ?? '{}';
-    final Map<String, dynamic> decoded = json.decode(rawJson);
-    final Map<String, List<String>> grouped = decoded.map((key, value) => MapEntry(key, List<String>.from(value)));
-
+    final rawJson = prefs.getString(_groupedKey) ?? '{}';
+    final decoded = json.decode(rawJson) as Map<String, dynamic>;
+    final loaded = decoded.map((k, v) => MapEntry(k, List<String>.from(v)));
     setState(() {
-      groupedRecipes = grouped;
-      bookmarkedRecipes = grouped.values.expand((list) => list).toSet();
-      
-      for (var recipes in grouped.values){
-        for (var recipe in recipes){
-          messages.add({'sender': 'bot', 'message': recipe});
-        }
-      }
+      groupedRecipes = loaded;
+      bookmarkedRecipes = loaded.values.expand((e) => e).toSet();
     });
   }
 
+  String get _groupedKey => 'grouped_recipes_${widget.userToken}';
+  String get _recentKey => 'recent_recipes_${widget.userToken}';
+
   void _scrollToBottom() {
-    Future.delayed(Duration(milliseconds: 100), () {
+    Future.delayed(const Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
         _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
       }
@@ -64,97 +123,99 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   String extractMainDishAuto(String message) {
-    final trimmed = message.replaceAll('\n', ' ').replaceFirst('푸렌즈가', '').trim();
-    final regex = RegExp(r'([가-힣]+?)(?:을|를)?\s*(?:레시피|알려|추천|소개|만들)');
-    final match = regex.firstMatch(trimmed);
-    if (match != null && match.group(1)!.length > 1) return match.group(1)!;
-
-    final fallback = RegExp(r'([가-힣]+?)(?:을|를)?\s*레시피');
-    final fbMatch = fallback.firstMatch(trimmed);
-    if (fbMatch != null && fbMatch.group(1)!.length > 1) return fbMatch.group(1)!;
-
-    return '기타';
+    final trimmed = message.replaceAll('\n', ' ').trim();
+    final invalid = ['집','오늘','내일','우리','내','네','가족','엄마','아빠','학교','친구','간단한','맛있는','쉬운','맛있게','쉽게','간단하게'];
+    String candidate = '';
+    final rx = RegExp(r'([가-힣]{2,}?)(?:을|를)?\s*(?:레시피|만드는 방법|조리 방법)');
+    final m = rx.firstMatch(trimmed);
+    if (m != null) candidate = m.group(1)!;
+    if (candidate.isEmpty) {
+      final m2 = RegExp(r'([가-힣]{2,})').firstMatch(trimmed);
+      if (m2 != null) candidate = m2.group(1)!;
+    }
+    if (candidate.length < 2 || invalid.any((w) => candidate.startsWith(w))) {
+      return '기타';
+    }
+    return candidate;
   }
 
   bool isRecipe(String message) {
-    return message.contains('레시피') || message.contains('만드는 법') ||
-        (message.contains('재료') && message.contains('조리'));
+    return message.contains('레시피') ||
+      message.contains('만드는 법') ||
+      (message.contains('재료') && message.contains('조리'));
   }
 
   Future<void> addToRecentRecipes(String text) async {
     final prefs = await SharedPreferences.getInstance();
-    final list = prefs.getStringList('recent_recipes') ?? [];
+    final list = prefs.getStringList(_recentKey) ?? [];
     if (!list.contains(text)) {
       list.add(text);
-      await prefs.setStringList('recent_recipes', list);
+      await prefs.setStringList(_recentKey, list);
     }
   }
 
   Future<void> toggleRecipeBookmark(String recipeText) async {
     final prefs = await SharedPreferences.getInstance();
     final mainDish = extractMainDishAuto(recipeText);
-    final existingList = groupedRecipes[mainDish] ?? [];
-
-    if (existingList.contains(recipeText)) {
-      existingList.remove(recipeText);
-      bookmarkedRecipes.remove(recipeText);
-      if (existingList.isEmpty) {
-        groupedRecipes.remove(mainDish);
+    final existing = groupedRecipes[mainDish] ?? [];
+    setState(() {
+      if (existing.contains(recipeText)) {
+        existing.remove(recipeText);
+        bookmarkedRecipes.remove(recipeText);
+        if (existing.isEmpty) groupedRecipes.remove(mainDish);
+        else groupedRecipes[mainDish] = existing;
       } else {
-        groupedRecipes[mainDish] = existingList;
+        existing.add(recipeText);
+        bookmarkedRecipes.add(recipeText);
+        groupedRecipes[mainDish] = existing;
       }
-    } else {
-      existingList.add(recipeText);
-      bookmarkedRecipes.add(recipeText);
-      groupedRecipes[mainDish] = existingList;
-    }
-
-    await prefs.setString('grouped_recipes', json.encode(groupedRecipes));
-    if (mounted){
-    setState(() {});
+    });
+    await prefs.setString(_groupedKey, json.encode(groupedRecipes));
   }
-}
 
   Future<void> _fetchChatHistory({String? date}) async {
     final uri = date != null
-        ? Uri.parse('http://127.0.0.1:8000/api/chat/history/?date=$date')
-        : Uri.parse('http://127.0.0.1:8000/api/chat/history/');
-
+      ? Uri.parse('http://10.0.2.2:8000/api/chat/history/?date=$date')
+      : Uri.parse('http://10.0.2.2:8000/api/chat/history/');
     try {
-      final response = await http.get(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Token ${widget.userToken}',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final decodedBody = utf8.decode(response.bodyBytes);
-        final data = json.decode(decodedBody) as List;
+      final res = await http.get(uri, headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Token ${widget.userToken}',
+      });
+      if (res.statusCode == 200) {
+        final data = json.decode(utf8.decode(res.bodyBytes)) as List;
         setState(() {
-          messages = data.map<Map<String, String>>((item) {
-            final message = item['message'];
-            if (item['sender'] == 'bot' && isRecipe(message!)){
-              bookmarkedRecipes.add(message);
+          _items = data.map<ChatItem>((item) {
+            final sender = item['sender'] as String;
+            final type = item['type'] as String;
+            switch (type) {
+              case 'map':
+                return ChatItem(ChatItemType.map, item['map_url'] as String);
+              case 'image':
+                return ChatItem(ChatItemType.image, item['image_url'] as String);
+              case 'text':
+              default:
+                final msg = item['message'] as String;
+                if (sender == 'bot' && isRecipe(msg)) {
+                  bookmarkedRecipes.add(msg);
+                }
+                return ChatItem(
+                  sender == 'user' ? ChatItemType.userText : ChatItemType.botText,
+                  msg,
+                );
             }
-            return {
-              'sender': item['sender'],
-              'message': item['message'],
-            };
           }).toList();
-          _showNoDataMessage = messages.isEmpty;
+          _showNoDataMessage = _items.isEmpty;
+          _isMessageVisible = _items.isEmpty;
         });
-
         if (_showNoDataMessage) {
-          Future.delayed(Duration(seconds: 2), () {
+          Future.delayed(const Duration(seconds: 2), (){
             if (mounted) setState(() => _showNoDataMessage = false);
           });
         }
-
         _scrollToBottom();
       } else {
-        print("채팅 내역 불러오기 실패: ${response.body}");
+        print("채팅 내역 불러오기 실패: ${res.body}");
       }
     } catch (e) {
       print("에러 발생: $e");
@@ -163,113 +224,112 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> sendMessage(String message) async {
     setState(() {
-      messages.add({'sender': 'user', 'message': message});
+      _items.add(ChatItem(ChatItemType.userText, message));
+      _isMessageVisible = false;
     });
+    _controller.clear();
+    _scrollToBottom();
 
     try {
-      final response = await http.post(
-        Uri.parse('http://127.0.0.1:8000/api/chat/'),
+      final res = await http.post(
+        Uri.parse('http://10.0.2.2:8000/api/chat/'),
         headers: {
           'Content-Type': 'application/json; charset=UTF-8',
           'Authorization': 'Token ${widget.userToken}',
         },
-        body: jsonEncode({'message': message}),
+        body: json.encode({'message': message}),
       );
 
-      if (response.statusCode == 200) {
-        final decodedBody = utf8.decode(response.bodyBytes);
-        final data = jsonDecode(decodedBody);
-        setState(() {
-          messages.add({'sender': 'bot', 'message': data['response']});
-          imageUrl = data['recipe_image_url'] ?? '';
-        });
+      if (res.statusCode == 200) {
+        final data = json.decode(utf8.decode(res.bodyBytes));
+        final botText = data['response'] as String? ?? '';
+        final rawImg = data['recipe_image_url'] as String?;
+        final lat = data['map_lat'];
+        final lng = data['map_lng'];
+
+
+        // 봇 텍스트
+        setState(() => _items.add(ChatItem(ChatItemType.botText, botText)));
+        if (isRecipe(botText)) addToRecentRecipes(botText);
+
+        // 이미지
+        if (rawImg!=null && rawImg.isNotEmpty) {
+          setState(() => _items.add(ChatItem(ChatItemType.image, rawImg)));
+        }
+
+        // 지도
+        if (lat!=null && lng!=null) {
+          final mapUrl = 'https://map.kakao.com/link/map/$lat,$lng';
+          _mapController.loadRequest(Uri.parse(mapUrl));
+          setState(() => _items.add(ChatItem(ChatItemType.map, mapUrl)));
+        }
       } else {
-        setState(() {
-          messages.add({'sender': 'bot', 'message': '오류: ${response.statusCode}'});
-        });
+        setState(() => _items.add(
+          ChatItem(ChatItemType.botText, '오류: ${res.statusCode}')
+        ));
       }
     } catch (e) {
-      setState(() {
-        messages.add({'sender': 'bot', 'message': '에러 발생: $e'});
-      });
+      setState(() => _items.add(
+        ChatItem(ChatItemType.botText, '에러 발생: $e')
+      ));
     }
 
-    _controller.clear();
     _scrollToBottom();
   }
 
   void startNewChat() {
     setState(() {
-      messages.clear();
-      imageUrl = '';
+      _items.clear();
       _isMessageVisible = true;
+      _showNoDataMessage = false;
     });
     _scrollToBottom();
   }
 
   void _showDrawerWithDateFilter(BuildContext context) {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        opaque: false,
-        pageBuilder: (context, _, __) {
-          return ChatserveScreen(
-            onStartNewChat: startNewChat,
-            onDateSelected: (selectedDate) {
-              final formatted = selectedDate.toIso8601String().split("T")[0];
-              _fetchChatHistory(date: formatted);
-            },
-          );
-        },
+    Navigator.push(context, PageRouteBuilder(
+      opaque: false,
+      pageBuilder: (_, __, ___) => ChatserveScreen(
+        onStartNewChat: startNewChat,
+        onDateSelected: (date) => _fetchChatHistory(date: date.toIso8601String().split("T")[0]),
       ),
-    );
+    ));
   }
 
   void _showLeftDrawer(BuildContext context) {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        opaque: false,
-        pageBuilder: (context, animation, _) {
-          return Stack(
-            children: [
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(color: Colors.black.withOpacity(0.5)),
-              ),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Material(
-                  color: Color(0xFFFBFBFB),
-                  child: Container(
-                    width: MediaQuery.of(context).size.width * 0.8,
-                    child: Column(
-                      children: [
-                        SizedBox(height: 40),
-                        IconButton(
-                          icon: Icon(Icons.close),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                        ListTile(title: Text('사진/동영상'), onTap: () => Navigator.pop(context)),
-                        ListTile(title: Text('파일'), onTap: () => Navigator.pop(context)),
-                        ListTile(title: Text('링크'), onTap: () => Navigator.pop(context)),
-                        ListTile(
-                          title: Text('마이페이지'),
-                          onTap: () {
-                            Navigator.pop(context);
-                            Navigator.pushNamed(context, '/mypage');
-                          },
-                        ),
-                      ],
+    Navigator.push(context, PageRouteBuilder(
+      opaque: false,
+      pageBuilder: (_, __, ___) => Stack(
+        children: [
+          GestureDetector(onTap: ()=>Navigator.pop(context), child: Container(color: Colors.black54)),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Material(
+              color: Color(0xFFFBFBFB),
+              child: SizedBox(
+                width: MediaQuery.of(context).size.width*0.8,
+                child: Column(
+                  children: [
+                    SizedBox(height:40),
+                    IconButton(icon: Icon(Icons.close), onPressed: ()=>Navigator.pop(context)),
+                    ListTile(title: Text('사진/동영상'), onTap: ()=>Navigator.pop(context)),
+                    ListTile(title: Text('파일'), onTap: ()=>Navigator.pop(context)),
+                    ListTile(title: Text('링크'), onTap: ()=>Navigator.pop(context)),
+                    ListTile(
+                      title: Text('마이페이지'),
+                      onTap: (){
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context,'/mypage');
+                      },
                     ),
-                  ),
+                  ],
                 ),
-              )
-            ],
-          );
-        },
+              ),
+            ),
+          ),
+        ],
       ),
-    );
+    ));
   }
 
   @override
@@ -279,49 +339,118 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
+  Widget _buildItem(BuildContext context, int index) {
+    final item = _items[index];
+    switch (item.type) {
+      case ChatItemType.userText:
+        return Align(
+          alignment: Alignment.centerRight,
+          child: Container(
+            padding: EdgeInsets.all(10),
+            margin: EdgeInsets.symmetric(vertical:5,horizontal:24),
+            decoration: BoxDecoration(
+              color: Color(0xFFFF5833),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(item.content, style: TextStyle(color:Colors.white)),
+          ),
+        );
+      case ChatItemType.botText:
+        final isRec = isRecipe(item.content);
+        return Align(
+          alignment: Alignment.centerLeft,
+          child: Stack(
+            children: [
+              Container(
+                padding: EdgeInsets.all(10),
+                margin: EdgeInsets.symmetric(vertical:5,horizontal:24),
+                decoration: BoxDecoration(
+                  color: Color(0xFF9F9F9F),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: SelectableText.rich(
+                  TextSpan(
+                    children: _buildLinkifiedTextSpans(item.content),
+                    style: TextStyle(color:Colors.white),
+                  ),
+                ),
+              ),
+              if (isRec)
+                Positioned(
+                  bottom:4,right:16,
+                  child: IconButton(
+                    icon: Icon(
+                      bookmarkedRecipes.contains(item.content)
+                        ? Icons.bookmark
+                        : Icons.bookmark_border,
+                      color: bookmarkedRecipes.contains(item.content)
+                        ? Color(0xFFFF5833)
+                        : Colors.white,
+                    ),
+                    onPressed: ()=>toggleRecipeBookmark(item.content),
+                  ),
+                ),
+            ],
+          ),
+        );
+      case ChatItemType.image:
+        return Padding(
+          padding: EdgeInsets.symmetric(vertical:8,horizontal:24),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Image.network(item.content),
+          ),
+        );
+      case ChatItemType.map:
+        _mapController.loadRequest(Uri.parse(item.content));
+        return Padding(
+          padding: EdgeInsets.symmetric(vertical: 8, horizontal: 24),
+          child: SizedBox(
+            height: 300,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: WebViewWidget(controller: _mapController),
+            ),
+          ),
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Color(0xFFFBFBFB),
-        title: Text('푸렌즈', style: TextStyle(color: Color(0xFF2F2F2F))),
+        title: Text('푸렌즈', style: TextStyle(color:Color(0xFF2F2F2F))),
         centerTitle: true,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.account_circle, color: Color(0xFF2F2F2F)),
-          onPressed: () => _showLeftDrawer(context),
+          icon: Icon(Icons.account_circle, color:Color(0xFF2F2F2F)),
+          onPressed: ()=>_showLeftDrawer(context),
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.menu, color: Color(0xFF2F2F2F)),
-            onPressed: () => _showDrawerWithDateFilter(context),
+            icon: Icon(Icons.menu, color:Color(0xFF2F2F2F)),
+            onPressed: ()=>_showDrawerWithDateFilter(context),
           ),
         ],
-        flexibleSpace: Container(decoration: BoxDecoration(color: Color(0XFFFBFBFB))),
+        flexibleSpace: Container(decoration: BoxDecoration(color: Color(0xFFFBFBFB))),
         systemOverlayStyle: SystemUiOverlayStyle.light.copyWith(statusBarColor: Color(0xFFFBFBFB)),
       ),
       body: Column(
         children: [
           if (_isMessageVisible)
             Padding(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(24),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: RichText(
                   text: TextSpan(
                     children: [
-                      TextSpan(
-                        text: '오늘 뭐 먹을지, 고민일 때\n',
-                        style: TextStyle(fontSize: 20, color: Color(0xFF2F2F2F)),
-                      ),
-                      TextSpan(
-                        text: '내 옆의 푸렌즈',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2F2F2F),
-                        ),
-                      ),
+                      TextSpan(text:'오늘 뭐 먹을지, 고민일 때\n', style: TextStyle(fontSize:20,color:Color(0xFF2F2F2F))),
+                      TextSpan(text:'내 옆의 푸렌즈\n\n', style: TextStyle(fontSize:24,fontWeight:FontWeight.bold,color:Color(0xFF2F2F2F))),
+                      TextSpan(text:"푸렌즈는 음식 고민 해결 전문가예요!\n'오늘 점심 메뉴 추천해줘'라고 말해보세요",
+                        style: TextStyle(fontSize:17,color:Color(0xFF2F2F2F))),
                     ],
                   ),
                 ),
@@ -329,67 +458,18 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           if (_showNoDataMessage)
             Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Center(
-                child: Text("대화기록이 없어요!", style: TextStyle(fontSize: 16, color: Colors.grey)),
-              ),
+              padding: EdgeInsets.only(bottom:10),
+              child: Center(child: Text('대화기록이 없어요!', style: TextStyle(fontSize:16,color:Colors.grey))),
             ),
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
-              itemCount: messages.length,
-              itemBuilder: (context, index) {
-                final isUser = messages[index]['sender'] == 'user';
-                final text = messages[index]['message']!;
-                final recipe = isRecipe(text);
-
-                if (!isUser && recipe) addToRecentRecipes(text);
-
-                return Align(
-                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Stack(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(10),
-                        margin: EdgeInsets.symmetric(vertical: 5, horizontal: 24),
-                        decoration: BoxDecoration(
-                          color: isUser ? Color(0xFFFF5833) : Color(0xFF9F9F9F),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(text, style: TextStyle(color: Colors.white)),
-                      ),
-                      if (!isUser && recipe)
-                        Positioned(
-                          bottom: 4,
-                          right: 16,
-                          child: IconButton(
-                            icon: Icon(
-                              bookmarkedRecipes.contains(text)
-                                  ? Icons.bookmark
-                                  : Icons.bookmark_border,
-                              color: bookmarkedRecipes.contains(text)
-                                  ? Color(0xFFFF5833)
-                                  : Colors.white,
-                            ),
-                            onPressed: () => toggleRecipeBookmark(text),
-                          ),
-                        ),
-                    ],
-                  ),
-                );
-              },
+              itemCount: _items.length,
+              itemBuilder: _buildItem,
             ),
           ),
-          if (imageUrl.isNotEmpty)
-            Padding(
-              padding: EdgeInsets.all(20),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.network(imageUrl),
-              ),
-            ),
           Padding(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(20),
             child: Row(
               children: [
                 Expanded(
@@ -397,27 +477,22 @@ class _ChatScreenState extends State<ChatScreen> {
                     controller: _controller,
                     decoration: InputDecoration(
                       hintText: '메시지를 입력하세요...',
-                      hintStyle: TextStyle(color: Color(0xFFE0E0E0)),
+                      hintStyle: TextStyle(color:Color(0xFFE0E0E0)),
                       border: OutlineInputBorder(),
                       filled: true,
                       fillColor: Color(0xFFFBFBFB),
                       suffixIcon: IconButton(
-                        icon: Icon(Icons.send, color: Color(0xFF2F2F2F)),
-                        onPressed: () {
-                          if (_controller.text.isNotEmpty) {
-                            sendMessage(_controller.text);
-                            setState(() => _isMessageVisible = false);
-                          }
+                        icon: Icon(Icons.send, color:Color(0xFF2F2F2F)),
+                        onPressed: (){
+                          final txt = _controller.text.trim();
+                          if (txt.isNotEmpty) sendMessage(txt);
                         },
                       ),
                     ),
-                    onSubmitted: (text) {
-                      if (text.isNotEmpty) {
-                        sendMessage(text);
-                        setState(() => _isMessageVisible = false);
-                      }
+                    onSubmitted: (t){
+                      final txt = t.trim();
+                      if (txt.isNotEmpty) sendMessage(txt);
                     },
-                    onTap: () => setState(() => _isMessageVisible = false),
                   ),
                 ),
               ],
