@@ -66,17 +66,18 @@ def classify_topics(llm: ChatOpenAI, user_message: str) -> str:
 
 def get_user_context(user):
     if not getattr(user, "is_authenticated", False):
-        return [], [], []
+        return [], [], [], []
     try:
         profile = UserProfile.objects.get(user_id=user)
         prefs = FoodPreference.objects.filter(user=profile)
         allergies = [a.allergy_name for a in Allergy.objects.filter(user=profile)]
         liked = [tag for p in prefs if p.is_liked for tag in FOOD_TAGS.get(p.food_name, [])]
         disliked = [tag for p in prefs if not p.is_liked for tag in FOOD_TAGS.get(p.food_name, [])]
-        return allergies, liked, disliked
+        conditions = [c.strip() for c in profile.medical_conditions.split(',') if c.strip()]
+        return allergies, liked, disliked, conditions
     except Exception as e:
         logger.error(f"Failed to load user context: {e}")
-        return [], [], []
+        return [], [], [], []
 
 @csrf_exempt
 def proxy_kakao_map_image(request):
@@ -101,18 +102,20 @@ def proxy_kakao_map_image(request):
 
 class ChatAPIView(APIView):
     permission_classes = [AllowAny]
+
     def handle_restaurant_search(self, request, llm, user_message):
+        # 0. 반경 추출
         radius = extract_radius(user_message)
         request.session["chatbot_last_radius"] = radius
 
-    # 1. 검색 키워드 요약
+        # 1. 검색 키워드 요약
         query = llm.invoke([
             SystemMessage(content="다음 문장을 검색 키워드로 요약해 주세요"),
             HumanMessage(content=user_message)
         ]).content.strip() or "맛집"
         request.session["chatbot_last_query"] = query
 
-    # 2. 사용자 정보 불러오기
+        # 2. 사용자 정보 불러오기
         try:
             profile = UserProfile.objects.get(user_id=request.user)
             prefs = FoodPreference.objects.filter(user=profile)
@@ -122,7 +125,7 @@ class ChatAPIView(APIView):
         except:
             allergies, liked_tags, medical_conditions = [], [], []
 
-    # 3. 위치 추출
+        # 3. 위치 추출
         location = llm.invoke([
             SystemMessage(content="다음 문장에서 장소 또는 지역명을 정확히 추출해 주세요"),
             HumanMessage(content=user_message)
@@ -135,50 +138,69 @@ class ChatAPIView(APIView):
             request.session["chatbot_last_location"] = location
 
         if not location:
-            return Response({"response": "위치 정보가 필요해요! 예: '서울 강남역 2km 고기집'"}, status=200)
+            return Response(
+                {"response": "위치 정보가 필요해요! 예: '서울 강남역 2km 고기집'"},
+                status=200
+            )
 
-        # 4. 페이지
+        # 4. 페이지 처리
         page = request.session.get("chatbot_last_page", 1)
         if MORE_RESULTS_PATTERN.search(user_message):
             page = min(page + 1, 5)
         request.session["chatbot_last_page"] = page
 
-    # 5. 좌표 가져오기
+        # 5. 좌표 가져오기
         lat, lng = get_coords_from_keyword(location)
         if lat is None or lng is None:
-            return Response({"response": "위치 정보를 찾을 수 없어요 😢"}, status=200)
+            return Response(
+                {"response": "위치 정보를 찾을 수 없어요 😢"},
+                status=200
+            )
 
-    # 6. 식당 검색
+        # 6. 식당 검색
         places = search_kakao_restaurants(query, lat, lng, radius, page)
         if places and "error" not in places[0]:
             formatted = format_restaurant_info(places)
 
-        # ✅ 알러지 경고 문구 생성
-            formatted =format_restaurant_info(places)
+            #  알러지 경고 문구 생성
             allergy_warnings = []
             for allergen in allergies:
-                if any(allergen in place["name"] or allergen in place.get("category", "") for place in places):
-                    allergy_warnings.append(allergen)
+                stems = {allergen}
+                if allergen.endswith("고기"):
+                    stems.add(allergen[:-2])   # '돼지고기' -> '돼지'
+                if allergen.endswith("류"):
+                    stems.add(allergen[:-1])   # '조개류' -> '조개'
+                if any(stem in user_message for stem in stems):
+                  allergy_warnings.append(allergen)
+                  continue
+                for place in places:
+                    name = place.get("name", "")
+                    category = place.get("category", "")
+                    if any(stem in name or stem in category for stem in stems):
+                        allergy_warnings.append(allergen)
+                        break
 
             warning_text = ""
             if allergy_warnings:
                 warning_text = (
-                    f"\n\n⚠️ 주의: 사용자의 알러지 정보에 따라 일부 음식은 섭취를 피해야 할 수 있어요! "
-                    f"(예: {', '.join(allergy_warnings)})"
+                    "⚠️ 주의: 사용자의 알러지({})에 해당할 수 있는 음식점입니다. 섭취 시 유의하세요!\n\n"
+                    .format(", ".join(allergy_warnings))
                 )
 
-        # 7. 응답 메시지 구성
+            # 7. 응답 메시지 구성
             response_text = (
-                f"{warning_text}{location} 근처 추천 리스트{note} (반경 {radius//1000}km)\n{formatted}"
+                f"{warning_text}"
+                f"{location} 근처 추천 리스트{note} (반경 {radius//1000}km)\n"
+                f"{formatted}"
             )
 
-        # 8. DB 저장
+            # 8. DB 저장
             if request.user.is_authenticated:
                 ChatHistory.objects.create(
                     user_id=request.user.user_id,
                     message=user_message,
                     response=response_text
-               )
+                )
                 map_url = f"https://map.kakao.com/link/map/{lat},{lng}"
                 ChatHistory.objects.create(
                     user_id=request.user.user_id,
@@ -192,7 +214,11 @@ class ChatAPIView(APIView):
                 "map_lng": lng
             }, status=200)
 
-        return Response({"response": f"{location} 근처 식당을 찾지 못했어요 😢"}, status=200)
+        # 추천 결과 없을 때
+        return Response(
+            {"response": f"{location} 근처 식당을 찾지 못했어요 😢"},
+            status=200
+        )
 
 
     def ask_gpt_yes_no(self, llm, user_message):
@@ -242,8 +268,8 @@ class ChatAPIView(APIView):
             return Response({"response":NON_FOOD_PROMPT}, status=200)
 
         # 유저 컨텍스트 & 시스템 프롬프트
-        allergies, liked, disliked = get_user_context(request.user)
-        system_prompt = get_system_prompt(topic, request.user, liked, disliked, allergies)
+        allergies, liked, disliked, conditions = get_user_context(request.user)
+        system_prompt = get_system_prompt(topic, request.user, liked, disliked, allergies, conditions)
 
         # 과거 대화 불러오기
         history = get_chat_session(request.session, topic)
@@ -263,8 +289,8 @@ class ChatAPIView(APIView):
         # 3) 레시피 이미지 생성 (옵션)
         recipe_image_url = None
         if (topic == "요리"
-            and any(k in user_message for k in ["레시피","만드는 법"])
-            and any(k in bot_text for k in ["레시피","조리법"])
+            and any(k in user_message for k in ["레시피","만드는 법", "만들기", "만드는 방법", "만드는법","만들어"])
+            and any(k in bot_text for k in ["레시피","조리법","만드는 법","요리법","만들기","방법"])
         ):
             try:
                 img = OpenAI(api_key=api_key).images.generate(
@@ -346,3 +372,4 @@ def get_chat_history(request):
             "message": c.response
           })
     return JsonResponse(data, safe=False, json_dumps_params={'ensure_ascii':False})
+
