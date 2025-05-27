@@ -122,22 +122,46 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  String extractMainDishAuto(String message) {
-    final trimmed = message.replaceAll('\n', ' ').trim();
-    final invalid = ['집','오늘','내일','우리','내','네','가족','엄마','아빠','학교','친구','간단한','맛있는','쉬운','맛있게','쉽게','간단하게'];
-    String candidate = '';
-    final rx = RegExp(r'([가-힣]{2,}?)(?:을|를)?\s*(?:레시피|만드는 방법|조리 방법)');
-    final m = rx.firstMatch(trimmed);
-    if (m != null) candidate = m.group(1)!;
-    if (candidate.isEmpty) {
-      final m2 = RegExp(r'([가-힣]{2,})').firstMatch(trimmed);
-      if (m2 != null) candidate = m2.group(1)!;
-    }
-    if (candidate.length < 2 || invalid.any((w) => candidate.startsWith(w))) {
+String extractMainDishAuto(String message) {
+  // 0) 먼저 "푸렌즈가 알려드릴게요!" 같은 접두부를 제거
+  var body = message
+    .replaceFirst(
+      RegExp(r'^.*?알려드릴게요[!~]?\s*'), '')
+    .replaceAll('\n', ' ')
+    .trim();
+
+  // 1) 맨 앞에 "X은" 또는 "X는" 이 있으면 X만 잡아낸다
+  final intro = RegExp(r'^([\uAC00-\uD7A3][\uAC00-\uD7A3\s]+?)\s*(?:은|는)')
+    .firstMatch(body);
+  if (intro != null) {
+    return intro.group(1)!.trim();
+  }
+
+  // 2) "X 레시피" 형태로 나오는 부분만 잡기 (불필요한 '있는' 같은 건 배제)
+  final recipeMatch = RegExp(r'([\uAC00-\uD7A3]{2,}?)\s+레시피')
+    .firstMatch(body);
+  if (recipeMatch != null) {
+    return recipeMatch.group(1)!;
+  }
+
+  // 3) 그 외엔 첫 두 글자 이상의 명사
+  final fallback = RegExp(r'([\uAC00-\uD7A3]{2,})').firstMatch(body);
+  if (fallback != null) {
+    final candidate = fallback.group(1)!;
+    const invalid = [
+      '집','오늘','내일','우리','내','네','가족','엄마','아빠',
+      '학교','친구','간단한','맛있는','쉬운','맛있게','쉽게',
+      '간단하게','기본적인','있는'
+    ];
+    if (invalid.any((w) => candidate.startsWith(w))) {
       return '기타';
     }
     return candidate;
   }
+
+  return '기타';
+}
+
 
   bool isRecipe(String message) {
     return message.contains('레시피') ||
@@ -402,17 +426,37 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         );
       case ChatItemType.map:
-        _mapController.loadRequest(Uri.parse(item.content));
-        return Padding(
-          padding: EdgeInsets.symmetric(vertical: 8, horizontal: 24),
-          child: SizedBox(
-            height: 300,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: WebViewWidget(controller: _mapController),
-            ),
+  // 매번 새 WebViewController를 만들면서 navigationDelegate도 설정
+      final mapController = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setBackgroundColor(const Color(0x00000000))
+        ..setNavigationDelegate(
+          NavigationDelegate(
+            onNavigationRequest: (NavigationRequest request) {
+              final url = request.url;
+              if (url.startsWith('kakaomap://')) {
+            // kakaomap:// 스킴은 외부 앱으로 열기
+                launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                return NavigationDecision.prevent;
+              }
+          // 일반 https 링크는 WebView 내에서 처리
+              return NavigationDecision.navigate;
+            },
           ),
-        );
+        )
+        ..loadRequest(Uri.parse(item.content));
+
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 24),
+        child: SizedBox(
+          height: 300,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: WebViewWidget(controller: mapController),
+          ),
+        ),
+      );
+
     }
   }
 
@@ -503,3 +547,5 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 }
+
+
